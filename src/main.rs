@@ -10,6 +10,8 @@ use tokio_core::reactor::Core;
 
 use futures::Future;
 
+mod process_messages;
+
 fn main() {
 	let mut core = Core::new().unwrap();
 
