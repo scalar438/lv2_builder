@@ -2,8 +2,6 @@ extern crate futures;
 extern crate telegram_bot;
 extern crate tokio_core;
 
-extern crate tokio;
-
 use futures::Stream;
 use telegram_bot::*;
 use tokio_core::reactor::Core;
