@@ -1,12 +1,12 @@
 pub enum Request {
 	Help,
-
+	Check,
 	UnknownRequest(String),
 }
 
 impl Request {
 	pub fn new(command: &str) -> Request {
-		let vs: Vec<_> = command
+		let mut vs: Vec<_> = command
 			.split_ascii_whitespace()
 			.filter_map(|s| {
 				if s.len() == 0 {
@@ -17,10 +17,18 @@ impl Request {
 			})
 			.collect();
 
-		if vs.is_empty() || vs[0] != "help" {
+		if vs.is_empty() {
 			return Request::UnknownRequest(command.to_string());
 		}
 
-		Request::Help
+		vs[0] = vs[0].chars().skip_while(|c| *c == '/').collect();
+
+		if vs[0] == "help" {
+			return Request::Help;
+		}
+		if vs[0] == "check" {
+			return Request::Check;
+		}
+		Request::UnknownRequest(command.to_string())
 	}
 }
