@@ -7,3 +7,4 @@ authors = ["111"]
 telegram-bot = "0.6.3"
 futures = "0.1"
 tokio-core = "0.1"
+sysinfo = "0.9"
