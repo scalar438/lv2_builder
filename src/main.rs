@@ -43,12 +43,30 @@ impl Request {
 	}
 }
 
-fn get_string_help() -> String
-{
+fn get_string_help() -> String {
 	"This is simple bot for build logviz2 notification. List of supported commands:
 	/help: print this message.
 	/check: check build status for finished (NOT IMPLEMENTED YET)
-	".to_string()
+	"
+	.to_string()
+}
+
+extern crate sysinfo;
+
+fn is_building_just_now() -> bool {
+	use std::collections::HashSet;
+	use sysinfo::{ProcessExt, RefreshKind, System, SystemExt};
+
+	let sys = System::new_with_specifics(RefreshKind::new().with_processes());
+
+	let builders_list = sys.get_process_by_name("qtcreator_ctrlc_stub");
+	let qtc_list: HashSet<_> = sys
+		.get_process_by_name("qtcreator")
+		.into_iter()
+		.map(|x| x.pid())
+		.collect();
+
+	builders_list.iter().any(|x| qtc_list.contains(&x.pid()))
 }
 
 fn main() {
@@ -64,7 +82,6 @@ fn main() {
 			// If the received update contains a new message...
 			if let UpdateKind::Message(message) = update.kind {
 				if let MessageKind::Text { ref data, .. } = message.kind {
-
 					let s = match Request::new(data) {
 						Request::Help => {
 							telegram_bot::types::requests::send_message::SendMessage::new(
@@ -74,9 +91,10 @@ fn main() {
 						}
 
 						Request::Check => {
+							let s = if is_building_just_now() {"Building in progress"} else {"Build completed (maybe with errors, may be not)"};
 							telegram_bot::types::requests::send_message::SendMessage::new(
 								message.chat,
-								"Checking is not implemented yet",
+								s,
 							)
 						}
 
