@@ -44,9 +44,9 @@ impl Request {
 }
 
 fn get_string_help() -> String {
-	"This is simple bot for build logviz2 notification. List of supported commands:
+	"This is simple bot for logviz2 build progress notification. List of supported commands:
 	/help: print this message.
-	/check: check build status for finished (NOT IMPLEMENTED YET)
+	/check: check build status. The command check if building finished or not. Success status request is not implemented yet.
 	"
 	.to_string()
 }
@@ -91,7 +91,9 @@ fn main() {
 						}
 
 						Request::Check => {
-							let s = if is_building_just_now() {"Building in progress"} else {"Build completed (maybe with errors, may be not)"};
+							let s = if is_building_just_now() {"Building in progress"} else {
+								"Build completed"
+							};
 							telegram_bot::types::requests::send_message::SendMessage::new(
 								message.chat,
 								s,
