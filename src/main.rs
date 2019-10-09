@@ -8,6 +8,8 @@ use tokio_core::reactor::Core;
 
 use futures::Future;
 
+mod logger;
+
 pub enum Request {
 	Help,
 	Check,
@@ -75,7 +77,7 @@ fn is_building_just_now() -> bool {
 }
 
 fn main() {
-	//let creator_id = telegram_bot::types::refs::UserId::new(211101859i64);
+	let creator_id = telegram_bot::types::refs::UserId::new(211101859i64);
 
 	let mut core = Core::new().unwrap();
 
@@ -84,6 +86,10 @@ fn main() {
 
 	let subscribers = std::cell::RefCell::new(std::collections::HashSet::new());
 
+	let mut logger = logger::Logger::new();
+
+	logger.write("-----------------------------\nBot started");
+
 	// Fetch new updates via long poll method
 	let message_process = api
 		.stream()
@@ -91,6 +97,15 @@ fn main() {
 			// If the received update contains a new message...
 			if let UpdateKind::Message(message) = update.kind {
 				if let MessageKind::Text { ref data, .. } = message.kind {
+					let logger_msg = if message.from.id == creator_id {
+						"Creator message".to_string()
+					} else {
+						format!(
+							"User message, name: {}, id: {}",
+							message.from.first_name, message.from.id
+						)
+					};
+					let logger_msg = format!("<{}>: {}", logger_msg, data);
 					let s = match Request::new(data) {
 						Request::Help => SendMessage::new(message.chat, get_string_help()),
 
@@ -121,8 +136,7 @@ fn main() {
 							),
 						),
 					};
-					// Print received text message to stdout.
-					println!("<{}>: {}", &message.from.first_name, data);
+					logger.write(&logger_msg);
 
 					api.spawn(s);
 				}
