@@ -92,43 +92,34 @@ fn main() {
 			if let UpdateKind::Message(message) = update.kind {
 				if let MessageKind::Text { ref data, .. } = message.kind {
 					let s = match Request::new(data) {
-						Request::Help => {
-							SendMessage::new(
-								message.chat,
-								get_string_help(),
-							)
-						}
+						Request::Help => SendMessage::new(message.chat, get_string_help()),
 
 						Request::Check => {
-							let s = if is_building_just_now() {"Building in progress"} else {
+							let s = if is_building_just_now() {
+								"Building in progress"
+							} else {
 								"Build completed"
 							};
-							SendMessage::new(
-								message.chat,
-								s,
-							)
+							SendMessage::new(message.chat, s)
 						}
 
 						Request::Subscribe => {
 							let s = if is_building_just_now() {
 								subscribers.borrow_mut().insert(message.chat.clone());
 								"You have subscribed on notification about end of building"
-							}
-							else {
+							} else {
 								"There is no building process"
 							};
-							SendMessage::new(
-								message.chat,
-								s,
-							)
+							SendMessage::new(message.chat, s)
 						}
 
-						Request::UnknownRequest(_) => {
-							SendMessage::new(
-								message.chat,
-								format!("Unknown command: {}. Try /help to get list of available commands", data),
-							)
-						}
+						Request::UnknownRequest(_) => SendMessage::new(
+							message.chat,
+							format!(
+								"Unknown command: {}. Try /help to get list of available commands",
+								data
+							),
+						),
 					};
 					// Print received text message to stdout.
 					println!("<{}>: {}", &message.from.first_name, data);
@@ -141,19 +132,18 @@ fn main() {
 		})
 		.map_err(|_| ());
 
-	let status_timer = tokio::timer::Interval::new_interval(std::time::Duration::from_secs(10)).map(
-		|_|
-		{
+	let status_timer = tokio::timer::Interval::new_interval(std::time::Duration::from_secs(10))
+		.map(|_| {
 			let mut subscribers = subscribers.borrow_mut();
 			if is_building_just_now() || subscribers.is_empty() {
 				return;
 			}
-			for s in std::mem::replace(&mut *subscribers, std::collections::HashSet::new())
-			{
+			for s in std::mem::replace(&mut *subscribers, std::collections::HashSet::new()) {
 				api.spawn(SendMessage::new(s, "Build completed"));
 			}
-		}
-	).for_each(|_| Ok(())).map_err(|_| ());
+		})
+		.for_each(|_| Ok(()))
+		.map_err(|_| ());
 
 	let joined = message_process.join(status_timer);
 
