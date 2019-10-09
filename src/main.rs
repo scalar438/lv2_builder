@@ -75,6 +75,8 @@ fn is_building_just_now() -> bool {
 }
 
 fn main() {
+	//let creator_id = telegram_bot::types::refs::UserId::new(211101859i64);
+
 	let mut core = Core::new().unwrap();
 
 	let token = std::env::var("TELEGRAM_BOT_TOKEN").unwrap();
