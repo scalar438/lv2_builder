@@ -50,7 +50,8 @@ impl Request {
 fn get_string_help() -> String {
 	"This is simple bot for logviz2 build progress notification. List of supported commands:
 	/help: print this message.
-	/check: check build status. The command check if building finished or not. Success status request is not implemented yet.
+	/check: check the build status. The command checks if building finished or not. Success status request is not implemented yet.
+	/subscribe: send a notification when the build process complete
 	"
 	.to_string()
 }
