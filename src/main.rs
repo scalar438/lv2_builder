@@ -11,6 +11,7 @@ use futures::Future;
 pub enum Request {
 	Help,
 	Check,
+	Subscribe,
 	UnknownRequest(String),
 }
 
@@ -38,6 +39,9 @@ impl Request {
 		}
 		if vs[0] == "check" {
 			return Request::Check;
+		}
+		if vs[0] == "subscribe" {
+			return Request::Subscribe;
 		}
 		Request::UnknownRequest(command.to_string())
 	}
@@ -75,8 +79,10 @@ fn main() {
 	let token = std::env::var("TELEGRAM_BOT_TOKEN").unwrap();
 	let api = Api::configure(token).build(core.handle()).unwrap();
 
+	let subscribers = std::cell::RefCell::new(std::collections::HashSet::new());
+
 	// Fetch new updates via long poll method
-	let future = api
+	let message_process = api
 		.stream()
 		.for_each(|update| {
 			// If the received update contains a new message...
@@ -84,7 +90,7 @@ fn main() {
 				if let MessageKind::Text { ref data, .. } = message.kind {
 					let s = match Request::new(data) {
 						Request::Help => {
-							telegram_bot::types::requests::send_message::SendMessage::new(
+							SendMessage::new(
 								message.chat,
 								get_string_help(),
 							)
@@ -94,14 +100,28 @@ fn main() {
 							let s = if is_building_just_now() {"Building in progress"} else {
 								"Build completed"
 							};
-							telegram_bot::types::requests::send_message::SendMessage::new(
+							SendMessage::new(
+								message.chat,
+								s,
+							)
+						}
+
+						Request::Subscribe => {
+							let s = if is_building_just_now() {
+								subscribers.borrow_mut().insert(message.chat.clone());
+								"You have subscribed on notification about end of building"
+							}
+							else {
+								"There is no building process"
+							};
+							SendMessage::new(
 								message.chat,
 								s,
 							)
 						}
 
 						Request::UnknownRequest(_) => {
-							telegram_bot::types::requests::send_message::SendMessage::new(
+							SendMessage::new(
 								message.chat,
 								format!("Unknown command: {}. Try /help to get list of available commands", data),
 							)
@@ -118,5 +138,21 @@ fn main() {
 		})
 		.map_err(|_| ());
 
-	core.run(future).unwrap();
+	let status_timer = tokio::timer::Interval::new_interval(std::time::Duration::from_secs(10)).map(
+		|_|
+		{
+			let mut subscribers = subscribers.borrow_mut();
+			if is_building_just_now() || subscribers.is_empty() {
+				return;
+			}
+			for s in std::mem::replace(&mut *subscribers, std::collections::HashSet::new())
+			{
+				api.spawn(SendMessage::new(s, "Build completed"));
+			}
+		}
+	).for_each(|_| Ok(())).map_err(|_| ());
+
+	let joined = message_process.join(status_timer);
+
+	core.run(joined).unwrap();
 }

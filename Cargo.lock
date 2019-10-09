@@ -357,6 +357,7 @@ dependencies = [
  "futures 0.1.29 (registry+https://github.com/rust-lang/crates.io-index)",
  "sysinfo 0.9.5 (registry+https://github.com/rust-lang/crates.io-index)",
  "telegram-bot 0.6.3 (registry+https://github.com/rust-lang/crates.io-index)",
+ "tokio 0.1.22 (registry+https://github.com/rust-lang/crates.io-index)",
  "tokio-core 0.1.17 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 

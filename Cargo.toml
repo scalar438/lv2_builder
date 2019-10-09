@@ -2,9 +2,11 @@
 name = "lv2_builder"
 version = "0.0.1"
 authors = ["111"]
+edition = "2018"
 
 [dependencies]
 telegram-bot = "0.6.3"
 futures = "0.1"
 tokio-core = "0.1"
+tokio = "0.1"
 sysinfo = "0.9"
