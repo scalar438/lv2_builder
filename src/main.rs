@@ -124,7 +124,7 @@ fn main() {
 						Request::Subscribe => {
 							let s = if is_building_just_now() {
 								subscribers.borrow_mut().insert(message.chat.clone());
-								"You have subscribed on notification about end of building"
+								"You have subscribed to end of building notification"
 							} else {
 								"There is no building process"
 							};
