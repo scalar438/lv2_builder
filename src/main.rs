@@ -88,7 +88,20 @@ fn main() {
 
 	let mut logger = logger::Logger::new();
 
-	logger.write("-----------------------------\nBot started");
+	{
+		let user = telegram_bot::chat::User {
+			first_name: "".to_string(), 
+			id: creator_id, 
+			is_bot: false, 
+			language_code: None,
+			last_name: None, 
+			username: None
+		};
+		let chat = telegram_bot::chat::MessageChat::Private(user);
+		api.spawn(SendMessage::new(chat, "Bot started"));
+
+		logger.write("-----------------------------\nBot started");
+	}
 
 	// Fetch new updates via long poll method
 	let message_process = api
