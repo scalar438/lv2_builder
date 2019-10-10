@@ -1,14 +1,14 @@
 extern crate futures;
 extern crate telegram_bot;
 extern crate tokio_core;
+extern crate sysinfo;
 
-use futures::Stream;
+use futures::{Stream, Future};
 use telegram_bot::*;
 use tokio_core::reactor::Core;
 
-use futures::Future;
-
 mod logger;
+
 
 pub enum Request {
 	Help,
@@ -58,22 +58,12 @@ fn get_string_help() -> String {
 	.to_string()
 }
 
-extern crate sysinfo;
-
 fn is_building_just_now() -> bool {
-	use std::collections::HashSet;
-	use sysinfo::{ProcessExt, RefreshKind, System, SystemExt};
+	use sysinfo::{RefreshKind, System, SystemExt};
 
 	let sys = System::new_with_specifics(RefreshKind::new().with_processes());
 
-	let builders_list = sys.get_process_by_name("qtcreator_ctrlc_stub");
-	let qtc_list: HashSet<_> = sys
-		.get_process_by_name("qtcreator")
-		.into_iter()
-		.map(|x| x.pid())
-		.collect();
-
-	builders_list.iter().any(|x| qtc_list.contains(&x.pid()))
+	sys.get_process_by_name("qtcreator_ctrlc_stub").len() != 0
 }
 
 fn main() {
