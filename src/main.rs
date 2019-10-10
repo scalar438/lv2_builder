@@ -1,14 +1,13 @@
 extern crate futures;
+extern crate sysinfo;
 extern crate telegram_bot;
 extern crate tokio_core;
-extern crate sysinfo;
 
-use futures::{Stream, Future};
+use futures::{Future, Stream};
 use telegram_bot::*;
 use tokio_core::reactor::Core;
 
 mod logger;
-
 
 pub enum Request {
 	Help,
@@ -80,12 +79,12 @@ fn main() {
 
 	{
 		let user = telegram_bot::chat::User {
-			first_name: "".to_string(), 
-			id: creator_id, 
-			is_bot: false, 
+			first_name: "".to_string(),
+			id: creator_id,
+			is_bot: false,
 			language_code: None,
-			last_name: None, 
-			username: None
+			last_name: None,
+			username: None,
 		};
 		let chat = telegram_bot::chat::MessageChat::Private(user);
 		api.spawn(SendMessage::new(chat, "Bot started"));
