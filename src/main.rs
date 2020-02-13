@@ -50,7 +50,7 @@ impl Request {
 
 fn get_string_help() -> String {
 	"This is a simple bot for logviz2 build progress notification. List of supported commands:
-	/help: print this message.
+	/help: print help message.
 	/check: check the build status. Success status request is not implemented yet.
 	/subscribe: send a notification when the build process complete.
 	"
@@ -138,10 +138,7 @@ fn main() {
 
 						Request::UnknownRequest(_) => SendMessage::new(
 							message.chat,
-							format!(
-								"Unknown command: {}. Try /help to get list of available commands",
-								data
-							),
+							format!("Unknown command: {}. Help: \n {}", data, get_string_help()),
 						),
 					};
 					logger.write(&logger_msg);
@@ -161,10 +158,8 @@ fn main() {
 				return;
 			}
 			for s in std::mem::replace(&mut *subscribers, std::collections::HashSet::new()) {
-				if let Some(j) = &*julia_chat.borrow()
-				{
-					if j == &s
-					{
+				if let Some(j) = &*julia_chat.borrow() {
+					if j == &s {
 						api.spawn(SendMessage::new(j.clone(), "PS: I love you :)"));
 						api.spawn(SendMessage::new(j.clone(), "❤"));
 					}
