@@ -72,19 +72,15 @@ fn is_building_just_now() -> bool {
 	false
 }
 
+fn parse_i64(s: String) -> Option<i64> {
+	s.parse().ok()
+}
+
 fn try_get_creator_id() -> Option<UserId> {
-	// TODO: write it by and_then
-	let res = std::env::var("CREATOR_ID");
-	match res {
-		Ok(s) => {
-			if let Ok(id) = s.parse() {
-				Some(UserId::new(id))
-			} else {
-				None
-			}
-		}
-		Err(_) => None,
-	}
+	std::env::var("CREATOR_ID")
+		.ok()
+		.and_then(parse_i64)
+		.map(UserId::new)
 }
 
 fn main() {
