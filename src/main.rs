@@ -138,7 +138,7 @@ fn main() {
 
 						Request::UnknownRequest(_) => SendMessage::new(
 							message.chat,
-							format!("Unknown command: {}. Help: \n {}", data, get_string_help()),
+							format!("Unknown command: {}. \n{}", data, get_string_help()),
 						),
 					};
 					logger.write(&logger_msg);
