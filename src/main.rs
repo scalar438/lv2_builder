@@ -4,8 +4,8 @@ extern crate telegram_bot;
 extern crate tokio_core;
 
 use futures::{Future, Stream};
-use telegram_bot::*;
 use telegram_bot::types::refs::UserId;
+use telegram_bot::*;
 use tokio_core::reactor::Core;
 
 mod logger;
@@ -59,14 +59,12 @@ fn get_string_help() -> String {
 }
 
 fn is_building_just_now() -> bool {
-	use sysinfo::{RefreshKind, System, SystemExt, ProcessExt};
+	use sysinfo::{ProcessExt, RefreshKind, System, SystemExt};
 
 	let sys = System::new_with_specifics(RefreshKind::new().with_processes());
 
-	for (_, proc) in sys.get_processes()
-	{
-		if proc.name() == "qtcreator_ctrlc_stub.exe" || proc.name() == "node.exe"
-		{
+	for (_, proc) in sys.get_processes() {
+		if proc.name() == "qtcreator_ctrlc_stub.exe" || proc.name() == "node.exe" {
 			return true;
 		}
 	}
@@ -74,20 +72,17 @@ fn is_building_just_now() -> bool {
 	false
 }
 
-fn try_get_creator_id() -> Option<UserId>
-{
+fn try_get_creator_id() -> Option<UserId> {
 	// TODO: write it by and_then
 	let res = std::env::var("CREATOR_ID");
-	match res
-	{
-		Ok(s) => if let Ok(id) = s.parse()
-			{
+	match res {
+		Ok(s) => {
+			if let Ok(id) = s.parse() {
 				Some(UserId::new(id))
-			}
-			else
-			{
+			} else {
 				None
-			},
+			}
+		}
 		Err(_) => None,
 	}
 }
@@ -105,8 +100,7 @@ fn main() {
 
 	let creator_id = try_get_creator_id();
 
-	if let Some(creator_id) = creator_id
-	{
+	if let Some(creator_id) = creator_id {
 		let user = telegram_bot::chat::User {
 			first_name: "".to_string(),
 			id: creator_id,
