@@ -51,18 +51,26 @@ impl Request {
 fn get_string_help() -> String {
 	"This is a simple bot for logviz2 build progress notification. List of supported commands:
 	/help: print help message.
-	/check: check the build status. Success status request is not implemented yet.
-	/subscribe: send a notification when the build process complete.
+	/check: check the build/deploy status. Success status request is not implemented yet.
+	/subscribe: send a notification when the build/deploy process complete.
 	"
 	.to_string()
 }
 
 fn is_building_just_now() -> bool {
-	use sysinfo::{RefreshKind, System, SystemExt};
+	use sysinfo::{RefreshKind, System, SystemExt, ProcessExt};
 
 	let sys = System::new_with_specifics(RefreshKind::new().with_processes());
 
-	sys.get_process_by_name("qtcreator_ctrlc_stub").len() != 0
+	for (_, proc) in sys.get_processes()
+	{
+		if proc.name() == "qtcreator_ctrlc_stub.exe" || proc.name() == "node.exe"
+		{
+			return true;
+		}
+	}
+
+	false
 }
 
 fn main() {
