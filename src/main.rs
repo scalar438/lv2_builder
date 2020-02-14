@@ -5,6 +5,7 @@ extern crate tokio_core;
 
 use futures::{Future, Stream};
 use telegram_bot::*;
+use telegram_bot::types::refs::UserId;
 use tokio_core::reactor::Core;
 
 mod logger;
@@ -73,9 +74,25 @@ fn is_building_just_now() -> bool {
 	false
 }
 
-fn main() {
-	let creator_id = telegram_bot::types::refs::UserId::new(211101859i64);
+fn try_get_creator_id() -> Option<UserId>
+{
+	// TODO: write it by and_then
+	let res = std::env::var("CREATOR_ID");
+	match res
+	{
+		Ok(s) => if let Ok(id) = s.parse()
+			{
+				Some(UserId::new(id))
+			}
+			else
+			{
+				None
+			},
+		Err(_) => None,
+	}
+}
 
+fn main() {
 	let mut core = Core::new().unwrap();
 
 	let token = std::env::var("TELEGRAM_BOT_TOKEN").unwrap();
@@ -86,6 +103,9 @@ fn main() {
 
 	let mut logger = logger::Logger::new();
 
+	let creator_id = try_get_creator_id();
+
+	if let Some(creator_id) = creator_id
 	{
 		let user = telegram_bot::chat::User {
 			first_name: "".to_string(),
@@ -97,10 +117,9 @@ fn main() {
 		};
 		let chat = telegram_bot::chat::MessageChat::Private(user);
 		api.spawn(SendMessage::new(chat, "Bot started"));
-
-		logger.write("-----------------------------\nBot started");
 	}
 
+	logger.write("-----------------------------\nBot started");
 	// Fetch new updates via long poll method
 	let message_process = api
 		.stream()
@@ -108,7 +127,7 @@ fn main() {
 			// If the received update contains a new message...
 			if let UpdateKind::Message(message) = update.kind {
 				if let MessageKind::Text { ref data, .. } = message.kind {
-					let logger_msg = if message.from.id == creator_id {
+					let logger_msg = if Some(message.from.id) == creator_id {
 						"Creator message".to_string()
 					} else {
 						format!(
