@@ -94,7 +94,6 @@ fn main() {
 	let api = Api::configure(token).build(core.handle()).unwrap();
 
 	let subscribers = std::cell::RefCell::new(std::collections::HashSet::new());
-	let julia_chat = std::cell::RefCell::new(None);
 
 	let mut logger = logger::Logger::new();
 
@@ -129,10 +128,6 @@ fn main() {
 							message.from.first_name, message.from.id
 						)
 					};
-
-					if message.from.first_name == "Julia" {
-						*julia_chat.borrow_mut() = Some(message.chat.clone());
-					}
 
 					let logger_msg = format!("<{}>: {}", logger_msg, data);
 					let s = match Request::new(data) {
@@ -179,12 +174,6 @@ fn main() {
 				return;
 			}
 			for s in std::mem::replace(&mut *subscribers, std::collections::HashSet::new()) {
-				if let Some(j) = &*julia_chat.borrow() {
-					if j == &s {
-						api.spawn(SendMessage::new(j.clone(), "PS: I love you :)"));
-						api.spawn(SendMessage::new(j.clone(), "❤"));
-					}
-				}
 				api.spawn(SendMessage::new(s, "Build completed"));
 			}
 		})
