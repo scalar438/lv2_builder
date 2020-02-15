@@ -72,14 +72,10 @@ fn is_building_just_now() -> bool {
 	false
 }
 
-fn parse_i64(s: String) -> Option<i64> {
-	s.parse().ok()
-}
-
 fn try_get_creator_id() -> Option<UserId> {
 	std::env::var("CREATOR_ID")
 		.ok()
-		.and_then(parse_i64)
+		.and_then(|s| s.parse().ok())
 		.map(UserId::new)
 }
 
