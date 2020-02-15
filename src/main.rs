@@ -10,7 +10,7 @@ use tokio_core::reactor::Core;
 
 mod logger;
 
-pub enum Request {
+enum Request {
 	Help,
 	Check,
 	Subscribe,
@@ -18,7 +18,7 @@ pub enum Request {
 }
 
 impl Request {
-	pub fn new(command: &str) -> Request {
+	fn new(command: &str) -> Request {
 		let mut vs: Vec<_> = command
 			.split_ascii_whitespace()
 			.filter_map(|s| {
@@ -58,25 +58,42 @@ fn get_string_help() -> String {
 	.to_string()
 }
 
-fn is_building_just_now() -> bool {
-	use sysinfo::{ProcessExt, RefreshKind, System, SystemExt};
-
-	let sys = System::new_with_specifics(RefreshKind::new().with_processes());
-
-	for (_, proc) in sys.get_processes() {
-		if proc.name() == "qtcreator_ctrlc_stub.exe" || proc.name() == "node.exe" {
-			return true;
-		}
-	}
-
-	false
-}
-
 fn try_get_creator_id() -> Option<UserId> {
 	std::env::var("CREATOR_ID")
 		.ok()
 		.and_then(|s| s.parse().ok())
 		.map(UserId::new)
+}
+
+enum ActivityKind {
+	Build,
+	Deploy,
+	UpdateToRevision,
+}
+
+fn get_current_activity() -> Option<ActivityKind> {
+	use sysinfo::{ProcessExt, RefreshKind, System, SystemExt};
+
+	let sys = System::new_with_specifics(RefreshKind::new().with_processes());
+
+	for (_, proc) in sys.get_processes() {
+		match proc.name() {
+			"qtcreator_ctrlc_stub.exe" => return Some(ActivityKind::Build),
+			"python.exe" => {
+				if proc.cmd().contains(&"update_to_revisions.py".to_owned()) {
+					return Some(ActivityKind::UpdateToRevision);
+				}
+			}
+			"jinnee-utility.exe" => {
+				if proc.cmd().contains(&"--deploy_stand".to_owned()) {
+					return Some(ActivityKind::Deploy);
+				}
+			}
+			&_ => continue,
+		}
+	}
+
+	None
 }
 
 fn main() {
@@ -126,7 +143,7 @@ fn main() {
 						Request::Help => SendMessage::new(message.chat, get_string_help()),
 
 						Request::Check => {
-							let s = if is_building_just_now() {
+							let s = if get_current_activity().is_some() {
 								"Building in progress"
 							} else {
 								"Build completed"
@@ -135,7 +152,7 @@ fn main() {
 						}
 
 						Request::Subscribe => {
-							let s = if is_building_just_now() {
+							let s = if get_current_activity().is_some() {
 								subscribers.borrow_mut().insert(message.chat.clone());
 								"You have subscribed to end of building notification"
 							} else {
@@ -162,7 +179,7 @@ fn main() {
 	let status_timer = tokio::timer::Interval::new_interval(std::time::Duration::from_secs(10))
 		.map(|_| {
 			let mut subscribers = subscribers.borrow_mut();
-			if is_building_just_now() || subscribers.is_empty() {
+			if get_current_activity().is_none() || subscribers.is_empty() {
 				return;
 			}
 			for s in std::mem::replace(&mut *subscribers, std::collections::HashSet::new()) {
