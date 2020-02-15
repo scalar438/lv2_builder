@@ -71,6 +71,16 @@ enum ActivityKind {
 	UpdateToRevision,
 }
 
+impl std::fmt::Display for ActivityKind {
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		match *self {
+			ActivityKind::Build => write!(f, "Build"),
+			ActivityKind::Deploy => write!(f, "Deploy"),
+			ActivityKind::UpdateToRevision => write!(f, "Update to revisions"),
+		}
+	}
+}
+
 fn get_current_activity() -> Option<ActivityKind> {
 	use sysinfo::{ProcessExt, RefreshKind, System, SystemExt};
 
@@ -143,10 +153,10 @@ fn main() {
 						Request::Help => SendMessage::new(message.chat, get_string_help()),
 
 						Request::Check => {
-							let s = if get_current_activity().is_some() {
-								"Building in progress"
+							let s = if let Some(act) = get_current_activity() {
+								format!("{}", act)
 							} else {
-								"Build completed"
+								"Build completed".to_owned()
 							};
 							SendMessage::new(message.chat, s)
 						}
