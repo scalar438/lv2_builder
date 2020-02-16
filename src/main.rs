@@ -156,7 +156,7 @@ fn main() {
 							let s = if let Some(act) = get_current_activity() {
 								format!("{}", act)
 							} else {
-								"Build completed".to_owned()
+								"There is no current activity".to_owned()
 							};
 							SendMessage::new(message.chat, s)
 						}
