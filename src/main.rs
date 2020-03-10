@@ -65,6 +65,7 @@ fn try_get_creator_id() -> Option<UserId> {
 		.map(UserId::new)
 }
 
+#[derive(Debug)]
 enum ActivityKind {
 	Build,
 	Deploy,
@@ -189,7 +190,8 @@ fn main() {
 	let status_timer = tokio::timer::Interval::new_interval(std::time::Duration::from_secs(10))
 		.map(|_| {
 			let mut subscribers = subscribers.borrow_mut();
-			if get_current_activity().is_none() || subscribers.is_empty() {
+			let tt = get_current_activity();
+			if tt.is_some() || subscribers.is_empty() {
 				return;
 			}
 			for s in std::mem::replace(&mut *subscribers, std::collections::HashSet::new()) {
