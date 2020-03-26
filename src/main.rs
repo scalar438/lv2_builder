@@ -50,7 +50,7 @@ impl Request {
 }
 
 fn get_string_help() -> String {
-	"This is a simple bot for logviz2 build progress notification. List of supported commands:
+	"This is a simple bot for sbis build/deploy progress notification. List of supported commands:
 	/help: print help message.
 	/check: check the build/deploy status. Success status request is not implemented yet.
 	/subscribe: send a notification when the build/deploy process complete.
@@ -82,7 +82,7 @@ impl std::fmt::Display for ActivityKind {
 	}
 }
 
-fn get_current_activity() -> Option<ActivityKind> {
+fn get_current_activity_kind() -> Option<ActivityKind> {
 	use sysinfo::{ProcessExt, RefreshKind, System, SystemExt};
 
 	let sys = System::new_with_specifics(RefreshKind::new().with_processes());
@@ -154,7 +154,7 @@ fn main() {
 						Request::Help => SendMessage::new(message.chat, get_string_help()),
 
 						Request::Check => {
-							let s = if let Some(act) = get_current_activity() {
+							let s = if let Some(act) = get_current_activity_kind() {
 								format!("{}", act)
 							} else {
 								"There is no current activity".to_owned()
@@ -163,7 +163,7 @@ fn main() {
 						}
 
 						Request::Subscribe => {
-							let s = if get_current_activity().is_some() {
+							let s = if get_current_activity_kind().is_some() {
 								subscribers.borrow_mut().insert(message.chat.clone());
 								"You have subscribed to end of building notification"
 							} else {
@@ -190,7 +190,7 @@ fn main() {
 	let status_timer = tokio::timer::Interval::new_interval(std::time::Duration::from_secs(10))
 		.map(|_| {
 			let mut subscribers = subscribers.borrow_mut();
-			let tt = get_current_activity();
+			let tt = get_current_activity_kind();
 			if tt.is_some() || subscribers.is_empty() {
 				return;
 			}
