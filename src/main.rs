@@ -66,46 +66,8 @@ fn try_get_creator_id() -> Option<UserId> {
 		.map(UserId::new)
 }
 
-#[derive(Debug)]
-enum ActivityKind {
-	Build,
-	Deploy,
-	UpdateToRevision,
-}
-
-impl std::fmt::Display for ActivityKind {
-	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-		match *self {
-			ActivityKind::Build => write!(f, "Build"),
-			ActivityKind::Deploy => write!(f, "Deploy"),
-			ActivityKind::UpdateToRevision => write!(f, "Update to revisions"),
-		}
-	}
-}
-
-fn get_current_activity_kind() -> Option<ActivityKind> {
-	use sysinfo::{ProcessExt, RefreshKind, System, SystemExt};
-
-	let sys = System::new_with_specifics(RefreshKind::new().with_processes());
-
-	for (_, proc) in sys.get_processes() {
-		match proc.name() {
-			"qtcreator_ctrlc_stub.exe" => return Some(ActivityKind::Build),
-			"python.exe" => {
-				if proc.cmd().contains(&"update_to_revisions.py".to_owned()) {
-					return Some(ActivityKind::UpdateToRevision);
-				}
-			}
-			"jinnee-utility.exe" => {
-				if proc.cmd().contains(&"--deploy_stand".to_owned()) {
-					return Some(ActivityKind::Deploy);
-				}
-			}
-			&_ => continue,
-		}
-	}
-
-	None
+fn get_current_activity_kind() -> Option<activity::ActivityKind> {
+	activity::get_activity_list().pop().map(|a| a.activity)
 }
 
 fn main() {
