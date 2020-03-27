@@ -1,7 +1,7 @@
 use sysinfo::{ProcessExt, RefreshKind, System, SystemExt};
 
 #[derive(Debug)]
-enum ActivityKind {
+pub enum ActivityKind {
 	Build,
 	Deploy,
 	UpdateToRevision,
@@ -19,7 +19,7 @@ impl std::fmt::Display for ActivityKind {
 
 pub struct ProcessActivity {
 	pid: sysinfo::Pid,
-	activity: ActivityKind,
+	pub activity: ActivityKind,
 }
 
 pub fn get_activity_list() -> Vec<ProcessActivity> {
