@@ -22,37 +22,43 @@ pub struct ProcessActivity {
 	pub activity: ActivityKind,
 }
 
+fn get_process_activity(proc: &sysinfo::Process) -> Option<ActivityKind> {
+	match proc.name() {
+		"qtcreator_ctrlc_stub.exe" => Some(ActivityKind::Build),
+
+		"python.exe" => {
+			if proc.cmd().contains(&"update_to_revisions.py".to_owned()) {
+				Some(ActivityKind::UpdateToRevision)
+			} else {
+				None
+			}
+		}
+
+		"jinnee-utility.exe" => {
+			if proc.cmd().contains(&"--deploy_stand".to_owned()) {
+				Some(ActivityKind::Deploy)
+			} else {
+				None
+			}
+		}
+		&_ => None,
+	}
+}
+
 pub fn get_activity_list() -> Vec<ProcessActivity> {
 	let sys = System::new_with_specifics(RefreshKind::new().with_processes());
 
 	sys.get_processes()
 		.iter()
 		.filter_map(|(_, proc)| {
-			let activity;
-			match proc.name() {
-				"qtcreator_ctrlc_stub.exe" => activity = ActivityKind::Build,
-				"python.exe" => {
-					if proc.cmd().contains(&"update_to_revisions.py".to_owned()) {
-						activity = ActivityKind::UpdateToRevision;
-					} else {
-						return None;
-					}
-				}
-
-				"jinnee-utility.exe" => {
-					if proc.cmd().contains(&"--deploy_stand".to_owned()) {
-						activity = ActivityKind::Deploy;
-					} else {
-						return None;
-					}
-				}
-				&_ => return None,
+			if let Some(activity) = get_process_activity(proc) {
+				Some(ProcessActivity {
+					pid: proc.pid(),
+					activity,
+				})
+			} else {
+				None
 			}
-
-			Some(ProcessActivity {
-				pid: proc.pid(),
-				activity,
-			})
 		})
 		.collect()
 }
