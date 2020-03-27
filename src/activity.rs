@@ -1,6 +1,6 @@
 use sysinfo::{ProcessExt, RefreshKind, System, SystemExt};
 
-#[derive(Debug)]
+#[derive(Debug, Eq, PartialEq, Hash)]
 pub enum ActivityKind {
 	Build,
 	Deploy,
@@ -18,7 +18,7 @@ impl std::fmt::Display for ActivityKind {
 }
 
 pub struct ProcessActivity {
-	pid: sysinfo::Pid,
+	pub pid: sysinfo::Pid,
 	pub activity: ActivityKind,
 }
 
