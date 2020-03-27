@@ -11,6 +11,7 @@ use tokio_core::reactor::Core;
 mod activity;
 mod logger;
 
+#[derive(PartialEq, Eq)]
 enum Request {
 	Help,
 	Check,
@@ -77,6 +78,7 @@ fn main() {
 	let api = Api::configure(token).build(core.handle()).unwrap();
 
 	let subscribers = std::cell::RefCell::new(std::collections::HashSet::new());
+	let current_activities = std::cell::RefCell::new(std::collections::HashMap::new());
 
 	let mut logger = logger::Logger::new();
 
@@ -113,25 +115,36 @@ fn main() {
 					};
 
 					let logger_msg = format!("<{}>: {}", logger_msg, data);
-					let s = match Request::new(data) {
+					let request_type = Request::new(data);
+					let s = match request_type {
 						Request::Help => SendMessage::new(message.chat, get_string_help()),
 
-						Request::Check => {
-							let s = if let Some(act) = get_current_activity_kind() {
-								format!("{}", act)
-							} else {
-								"There is no current activity".to_owned()
-							};
-							SendMessage::new(message.chat, s)
-						}
+						Request::Check | Request::Subscribe => {
+							let act_list = activity::get_activity_list();
+							let s = if let Some(elem) = act_list.first() {
+								// Has at least one element
 
-						Request::Subscribe => {
-							let s = if get_current_activity_kind().is_some() {
-								subscribers.borrow_mut().insert(message.chat.clone());
-								"You have subscribed to end of building notification"
+								let mut msg = if act_list.len() == 1 {
+									format!("Current action: {}", elem.activity)
+								} else {
+									"There are many actions".to_owned()
+								};
+								if request_type == Request::Subscribe {
+									msg += "\n";
+									msg += "When the action completed you will be notified";
+
+									let h =
+										act_list.into_iter().map(|a| (a.pid, a.activity)).collect();
+
+									*current_activities.borrow_mut() = h;
+									subscribers.borrow_mut().insert(message.chat.clone());
+								}
+
+								msg
 							} else {
-								"There is no building process"
+								"There no current actions".to_owned()
 							};
+
 							SendMessage::new(message.chat, s)
 						}
 
