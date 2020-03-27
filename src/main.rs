@@ -8,6 +8,7 @@ use telegram_bot::types::refs::UserId;
 use telegram_bot::*;
 use tokio_core::reactor::Core;
 
+mod activity;
 mod logger;
 
 enum Request {
