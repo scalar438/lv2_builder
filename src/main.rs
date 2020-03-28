@@ -67,18 +67,13 @@ fn try_get_creator_id() -> Option<UserId> {
 		.map(UserId::new)
 }
 
-fn get_current_activity_kind() -> Option<activity::ActivityKind> {
-	activity::get_activity_list().pop().map(|a| a.activity)
-}
-
 fn main() {
 	let mut core = Core::new().unwrap();
 
 	let token = std::env::var("TELEGRAM_BOT_TOKEN").unwrap();
 	let api = Api::configure(token).build(core.handle()).unwrap();
 
-	let subscribers = std::cell::RefCell::new(std::collections::HashSet::new());
-	let current_activities = std::cell::RefCell::new(std::collections::HashMap::new());
+	let subscribers = std::cell::RefCell::new(std::collections::HashMap::new());
 
 	let mut logger = logger::Logger::new();
 
@@ -133,11 +128,10 @@ fn main() {
 									msg += "\n";
 									msg += "When the action completed you will be notified";
 
-									let h =
+									let h: std::collections::HashMap<_, _> =
 										act_list.into_iter().map(|a| (a.pid, a.activity)).collect();
 
-									*current_activities.borrow_mut() = h;
-									subscribers.borrow_mut().insert(message.chat.clone());
+									subscribers.borrow_mut().insert(message.chat.clone(), h);
 								}
 
 								msg
@@ -165,14 +159,27 @@ fn main() {
 
 	let status_timer = tokio::timer::Interval::new_interval(std::time::Duration::from_secs(10))
 		.map(|_| {
+			let current_actions = activity::get_activity_list();
+			let pid_list_new = current_actions.iter().map(|a| &a.pid).collect();
+
 			let mut subscribers = subscribers.borrow_mut();
-			let tt = get_current_activity_kind();
-			if tt.is_some() || subscribers.is_empty() {
-				return;
+
+			for (chat, actions) in subscribers.iter_mut() {
+				let pid_list_old: std::collections::HashSet<_> = actions.keys().collect();
+				assert_ne!(pid_list_old.len(), 0);
+
+				let completed_list: Vec<_> = pid_list_old
+					.difference(&pid_list_new)
+					.map(|a| **a)
+					.collect();
+				for pid in completed_list {
+					if let Some(act) = actions.get(&pid) {
+						api.spawn(SendMessage::new(chat.clone(), format!("{} completed", act)));
+					}
+					actions.remove(&pid);
+				}
 			}
-			for s in std::mem::replace(&mut *subscribers, std::collections::HashSet::new()) {
-				api.spawn(SendMessage::new(s, "Build completed"));
-			}
+			subscribers.retain(|_, actions| actions.len() != 0);
 		})
 		.for_each(|_| Ok(()))
 		.map_err(|_| ());
