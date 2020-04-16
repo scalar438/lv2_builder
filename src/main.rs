@@ -73,7 +73,7 @@ fn main() {
 
 	let mut core = Core::new().unwrap();
 	let subscribers = std::cell::RefCell::new(std::collections::HashMap::new());
-	let mut logger = logger::Logger::new();
+	let mut logger = logger::Logger::new(std::env::args().find(|a| a == "-no_log_file").is_none());
 	let api = Api::configure(token.clone()).build(core.handle()).unwrap();
 
 	if let Some(creator_id) = creator_id {
