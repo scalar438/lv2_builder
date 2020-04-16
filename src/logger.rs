@@ -6,7 +6,10 @@ pub struct Logger {
 }
 
 impl Logger {
-	pub fn new() -> Self {
+	pub fn new(use_file: bool) -> Self {
+		if !use_file {
+			return Logger { file: None };
+		}
 		let file = if let Ok(path) = std::env::current_dir() {
 			let now = chrono::Utc::now();
 			let filename = format!("{}.{}.{}.log", now.year(), now.month(), now.day());
