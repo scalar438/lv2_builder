@@ -54,7 +54,7 @@ impl Request {
 fn get_string_help() -> String {
 	"This is a simple bot for sbis build/deploy progress notification. List of supported commands:
 	/help: print help message.
-	/check: check the build/deploy status. Success status request is not implemented yet.
+	/check: check the build/deploy status.
 	/subscribe: send a notification when the build/deploy process complete.
 	"
 	.to_string()
@@ -136,7 +136,7 @@ fn main() {
 
 									msg
 								} else {
-									"There no current actions".to_owned()
+									"There is no current actions".to_owned()
 								};
 
 								SendMessage::new(message.chat, s)
