@@ -1,13 +1,12 @@
 extern crate futures;
 extern crate sysinfo;
 extern crate telegram_bot;
-extern crate tokio_core;
 
-use futures::{Future, Stream};
+use futures::FutureExt;
+use futures::{pin_mut, select, StreamExt};
 use std::collections::HashMap;
 use telegram_bot::types::refs::UserId;
 use telegram_bot::*;
-use tokio_core::reactor::Core;
 
 mod activity;
 mod logger;
@@ -154,14 +153,14 @@ impl BotData {
 	}
 }
 
-fn main() {
+#[tokio::main]
+async fn main() {
 	let token = std::env::var("TELEGRAM_BOT_TOKEN").unwrap();
 	let creator_id = try_get_creator_id();
 
-	let mut core = Core::new().unwrap();
 	let subscribers = HashMap::new();
 	let logger = logger::Logger::new(std::env::args().find(|a| a == "-no_log_file").is_none());
-	let api = Api::configure(token).build(core.handle()).unwrap();
+	let api = Api::new(token);
 
 	if let Some(creator_id) = creator_id {
 		let user = telegram_bot::chat::User {
@@ -175,6 +174,8 @@ fn main() {
 		let chat = telegram_bot::chat::MessageChat::Private(user);
 		api.spawn(SendMessage::new(chat, "Bot started"));
 	}
+	let mut msg_stream = api.stream();
+	let mut timer = tokio::time::interval(std::time::Duration::from_secs(10));
 
 	let bot_data = BotData {
 		api,
@@ -182,6 +183,7 @@ fn main() {
 		creator_id,
 		logger,
 	};
+
 	let bot_data = std::cell::RefCell::new(bot_data);
 
 	loop {
@@ -189,34 +191,26 @@ fn main() {
 			.borrow_mut()
 			.logger
 			.write("-----------------------------\nBot started");
-		// Fetch new updates via long poll method
-		let message_process = bot_data
-			.borrow()
-			.api
-			.stream()
-			.for_each(|update| {
-				// If the received update contains a new message...
-				if let UpdateKind::Message(message) = update.kind {
-					if let MessageKind::Text { ref data, .. } = message.kind {
-						bot_data.borrow_mut().process_message(&data, &message.from);
+
+		let tick = timer.tick().fuse();
+		let msg = msg_stream.next().fuse();
+
+		pin_mut!(tick, msg);
+
+		select! {
+			msg = msg => {
+				if let Some(msg) = msg {
+					if let Ok(msg) = msg {
+						if let UpdateKind::Message(message) = msg.kind {
+							if let MessageKind::Text { ref data, .. } = message.kind {
+								bot_data.borrow_mut().process_message(&data, &message.from);
+							}
+						}
 					}
 				}
+			},
 
-				Ok(())
-			})
-			.map_err(|_| ());
-
-		let status_timer = tokio::timer::Interval::new_interval(std::time::Duration::from_secs(10))
-			.map(|_| {
-				bot_data.borrow_mut().process_timer();
-			})
-			.for_each(|_| Ok(()))
-			.map_err(|_| ());
-
-		let joined = message_process.join(status_timer);
-
-		if let Err(e) = core.run(joined) {
-			eprintln!("Error occured: {:?}. Try to restart...", e);
+			_ = tick => bot_data.borrow_mut().process_timer(),
 		}
 	}
 }
