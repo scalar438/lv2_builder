@@ -1,6 +1,6 @@
 [package]
 name = "sbis_build_status"
-version = "0.0.2"
+version = "0.0.3"
 authors = ["as.larin@tensor.ru"]
 edition = "2018"
 
