@@ -177,18 +177,15 @@ async fn main() {
 	let mut msg_stream = api.stream();
 	let mut timer = tokio::time::interval(std::time::Duration::from_secs(10));
 
-	let bot_data = BotData {
+	let mut bot_data = BotData {
 		api,
 		subscribers,
 		creator_id,
 		logger,
 	};
 
-	let bot_data = std::cell::RefCell::new(bot_data);
-
 	loop {
 		bot_data
-			.borrow_mut()
 			.logger
 			.write("-----------------------------\nBot started");
 
@@ -203,14 +200,14 @@ async fn main() {
 					if let Ok(msg) = msg {
 						if let UpdateKind::Message(message) = msg.kind {
 							if let MessageKind::Text { ref data, .. } = message.kind {
-								bot_data.borrow_mut().process_message(&data, &message.from);
+								bot_data.process_message(&data, &message.from);
 							}
 						}
 					}
 				}
 			},
 
-			_ = tick => bot_data.borrow_mut().process_timer(),
+			_ = tick => bot_data.process_timer(),
 		}
 	}
 }
