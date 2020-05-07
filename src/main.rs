@@ -196,12 +196,10 @@ async fn main() {
 
 		select! {
 			msg = msg => {
-				if let Some(msg) = msg {
-					if let Ok(msg) = msg {
-						if let UpdateKind::Message(message) = msg.kind {
-							if let MessageKind::Text { ref data, .. } = message.kind {
-								bot_data.process_message(&data, &message.from);
-							}
+				if let Some(Ok(msg)) = msg {
+					if let UpdateKind::Message(message) = msg.kind {
+						if let MessageKind::Text { ref data, .. } = message.kind {
+							bot_data.process_message(&data, &message.from);
 						}
 					}
 				}
