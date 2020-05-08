@@ -94,7 +94,7 @@ impl BotData {
 			Request::Check | Request::Subscribe => {
 				let act_list = activity::get_activity_list();
 				let s = if let Some(elem) = act_list.first() {
-					// Has at least one element
+					// There is least one element
 
 					let mut msg = if act_list.len() == 1 {
 						format!("Current action: {}", elem.activity)
@@ -185,10 +185,6 @@ async fn main() {
 	};
 
 	loop {
-		bot_data
-			.logger
-			.write("-----------------------------\nBot started");
-
 		let tick = timer.tick().fuse();
 		let msg = msg_stream.next().fuse();
 
