@@ -23,26 +23,20 @@ pub struct ProcessActivity {
 }
 
 fn get_process_activity(proc: &sysinfo::Process) -> Option<ActivityKind> {
-	match proc.name() {
-		"qtcreator_ctrlc_stub.exe" => Some(ActivityKind::Build),
-
-		"python.exe" => {
-			if proc.cmd().contains(&"update_to_revisions.py".to_owned()) {
-				Some(ActivityKind::UpdateToRevision)
-			} else {
-				None
-			}
-		}
-
-		"jinnee-utility.exe" => {
-			if proc.cmd().contains(&"--deploy_stand".to_owned()) {
-				Some(ActivityKind::Deploy)
-			} else {
-				None
-			}
-		}
-		&_ => None,
+	let name = proc.name();
+	let cmd = proc.cmd();
+	if name.contains("qtcreator_ctrlc_stub") {
+		return Some(ActivityKind::Build);
 	}
+
+	if name.contains("python") && cmd.contains(&"update_to_revisions.py".to_owned()) {
+		return Some(ActivityKind::UpdateToRevision);
+	}
+
+	if name.contains("jinnee-utility") && cmd.contains(&"--deploy_stand".to_owned()) {
+		return Some(ActivityKind::Deploy);
+	}
+	None
 }
 
 pub fn get_activity_list() -> Vec<ProcessActivity> {
