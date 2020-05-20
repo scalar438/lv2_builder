@@ -113,7 +113,7 @@ impl BotData {
 
 					msg
 				} else {
-					"There is no current actions".to_owned()
+					"There is no current action".to_owned()
 				};
 
 				SendMessage::new(chat, s)
