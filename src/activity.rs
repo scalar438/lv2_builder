@@ -29,7 +29,7 @@ fn get_process_activity(proc: &sysinfo::Process) -> Option<ActivityKind> {
 		return Some(ActivityKind::Build);
 	}
 
-	if name.contains("python") && cmd.contains(&"update_to_revisions.py".to_owned()) {
+	if name.contains("python") && cmd.iter().any(|a| a.contains("update_to_revisions.py")) {
 		return Some(ActivityKind::UpdateToRevision);
 	}
 
