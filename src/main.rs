@@ -9,7 +9,6 @@ use telegram_bot::types::refs::UserId;
 use telegram_bot::*;
 
 mod activity;
-mod logger;
 
 #[derive(PartialEq, Eq)]
 enum Request {
@@ -72,7 +71,6 @@ type AllActions = HashMap<UserId, UserActions>;
 
 struct BotData {
 	creator_id: Option<UserId>,
-	logger: logger::Logger,
 
 	api: telegram_bot::Api,
 	subscribers: AllActions,
@@ -80,13 +78,6 @@ struct BotData {
 
 impl BotData {
 	fn process_message(&mut self, msg: &str, chat: &telegram_bot::types::User) {
-		let logger_msg = if Some(chat.id) == self.creator_id {
-			"Creator message".to_string()
-		} else {
-			format!("User message, name: {}, id: {}", chat.first_name, chat.id)
-		};
-
-		let logger_msg = format!("<{}>: {}", logger_msg, msg);
 		let request_type = Request::new(msg);
 		let s = match request_type {
 			Request::Help => SendMessage::new(chat, get_string_help()),
@@ -124,7 +115,6 @@ impl BotData {
 				format!("Unknown command: {}. \n{}", msg, get_string_help()),
 			),
 		};
-		self.logger.write(&logger_msg);
 
 		self.api.spawn(s);
 	}
@@ -159,7 +149,6 @@ async fn main() {
 	let creator_id = try_get_creator_id();
 
 	let subscribers = HashMap::new();
-	let logger = logger::Logger::new(std::env::args().find(|a| a == "-no_log_file").is_none());
 	let api = Api::new(token);
 
 	if let Some(creator_id) = creator_id {
@@ -181,7 +170,6 @@ async fn main() {
 		api,
 		subscribers,
 		creator_id,
-		logger,
 	};
 
 	loop {
