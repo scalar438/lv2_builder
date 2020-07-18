@@ -1,6 +1,7 @@
 extern crate futures;
 extern crate sysinfo;
 extern crate telegram_bot;
+extern crate ini;
 
 use futures::FutureExt;
 use futures::{pin_mut, select, StreamExt};
@@ -57,13 +58,6 @@ fn get_string_help() -> String {
 	/subscribe: send a notification when the build/deploy process complete.
 	"
 	.to_string()
-}
-
-fn try_get_creator_id() -> Option<UserId> {
-	std::env::var("CREATOR_ID")
-		.ok()
-		.and_then(|s| s.parse().ok())
-		.map(UserId::new)
 }
 
 type UserActions = HashMap<sysinfo::Pid, activity::ActivityKind>;
@@ -143,10 +137,26 @@ impl BotData {
 	}
 }
 
+// Return token and (optional) creator id
+fn read_config() -> (String, Option<UserId>)
+{
+	let mut path = std::env::current_exe().unwrap();
+	path.pop();
+	path.push("config.ini");
+
+	let inifile = ini::Ini::load_from_file(path).unwrap();
+	let section = inifile.section::<String>(None).unwrap();
+	let token = section.get("token").unwrap();
+	let creator_id = section.get("creator_id").and_then(|s| s.parse().ok()).map(UserId::new);
+	
+	println!("{} {:?}", token, creator_id);
+
+	(token.to_owned(), creator_id)
+}
+
 #[tokio::main]
 async fn main() {
-	let token = std::env::var("TELEGRAM_BOT_TOKEN").unwrap();
-	let creator_id = try_get_creator_id();
+	let (token, creator_id) = read_config();
 
 	let subscribers = HashMap::new();
 	let api = Api::new(token);
