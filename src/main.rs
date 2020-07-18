@@ -1,7 +1,7 @@
 extern crate futures;
+extern crate ini;
 extern crate sysinfo;
 extern crate telegram_bot;
-extern crate ini;
 
 use futures::FutureExt;
 use futures::{pin_mut, select, StreamExt};
@@ -138,8 +138,7 @@ impl BotData {
 }
 
 // Return token and (optional) creator id
-fn read_config() -> (String, Option<UserId>)
-{
+fn read_config() -> (String, Option<UserId>) {
 	let mut path = std::env::current_exe().unwrap();
 	path.pop();
 	path.push("config.ini");
@@ -147,8 +146,11 @@ fn read_config() -> (String, Option<UserId>)
 	let inifile = ini::Ini::load_from_file(path).unwrap();
 	let section = inifile.section::<String>(None).unwrap();
 	let token = section.get("token").unwrap();
-	let creator_id = section.get("creator_id").and_then(|s| s.parse().ok()).map(UserId::new);
-	
+	let creator_id = section
+		.get("creator_id")
+		.and_then(|s| s.parse().ok())
+		.map(UserId::new);
+
 	println!("{} {:?}", token, creator_id);
 
 	(token.to_owned(), creator_id)
