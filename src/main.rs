@@ -64,7 +64,7 @@ type UserActions = HashMap<sysinfo::Pid, activity::ActivityKind>;
 type AllActions = HashMap<UserId, UserActions>;
 
 struct BotData {
-	creator_id: Option<UserId>,
+	owner_id: Option<UserId>,
 
 	api: telegram_bot::Api,
 	subscribers: AllActions,
@@ -137,7 +137,7 @@ impl BotData {
 	}
 }
 
-// Return token and (optional) creator id
+// Return token and (optional) owner id
 fn read_config() -> (String, Option<UserId>) {
 	let mut path = std::env::current_exe().unwrap();
 	path.pop();
@@ -146,27 +146,27 @@ fn read_config() -> (String, Option<UserId>) {
 	let inifile = ini::Ini::load_from_file(path).unwrap();
 	let section = inifile.section::<String>(None).unwrap();
 	let token = section.get("token").unwrap();
-	let creator_id = section
-		.get("creator_id")
+	let owner_id = section
+		.get("owner_id")
 		.and_then(|s| s.parse().ok())
 		.map(UserId::new);
 
-	println!("{} {:?}", token, creator_id);
+	println!("{} {:?}", token, owner_id);
 
-	(token.to_owned(), creator_id)
+	(token.to_owned(), owner_id)
 }
 
 #[tokio::main]
 async fn main() {
-	let (token, creator_id) = read_config();
+	let (token, owner_id) = read_config();
 
 	let subscribers = HashMap::new();
 	let api = Api::new(token);
 
-	if let Some(creator_id) = creator_id {
+	if let Some(owner_id) = owner_id {
 		let user = telegram_bot::chat::User {
 			first_name: "".to_string(),
-			id: creator_id,
+			id: owner_id,
 			is_bot: false,
 			language_code: None,
 			last_name: None,
@@ -181,7 +181,7 @@ async fn main() {
 	let mut bot_data = BotData {
 		api,
 		subscribers,
-		creator_id,
+		owner_id,
 	};
 
 	loop {
