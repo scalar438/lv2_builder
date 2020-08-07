@@ -163,18 +163,6 @@ async fn main() {
 	let subscribers = HashMap::new();
 	let api = Api::new(token);
 
-	if let Some(owner_id) = owner_id {
-		let user = telegram_bot::chat::User {
-			first_name: "".to_string(),
-			id: owner_id,
-			is_bot: false,
-			language_code: None,
-			last_name: None,
-			username: None,
-		};
-		let chat = telegram_bot::chat::MessageChat::Private(user);
-		api.spawn(SendMessage::new(chat, "Bot started"));
-	}
 	let mut msg_stream = api.stream();
 	let mut timer = tokio::time::interval(std::time::Duration::from_secs(10));
 
@@ -184,6 +172,18 @@ async fn main() {
 		owner_id,
 	};
 
+	if let Some(owner_id) = bot_data.owner_id {
+		let user = telegram_bot::chat::User {
+			first_name: "".to_string(),
+			id: owner_id,
+			is_bot: false,
+			language_code: None,
+			last_name: None,
+			username: None,
+		};
+		let chat = telegram_bot::chat::MessageChat::Private(user);
+		bot_data.api.spawn(SendMessage::new(chat, "Bot started"));
+	}
 	loop {
 		let tick = timer.tick().fuse();
 		let msg = msg_stream.next().fuse();
