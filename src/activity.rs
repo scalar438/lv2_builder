@@ -23,14 +23,14 @@ pub trait ProcessDescription {
 	fn description(&self) -> &str;
 }
 
-pub struct ProcessDescriptionWithPid {
-	pub pid: sysinfo::Pid,
-	pub description: ProcessDescriptionData,
+struct ProcessDescriptionWithPid {
+	pid: sysinfo::Pid,
+	description: ProcessDescriptionData,
 }
 
-pub struct ProcessDescriptionData {
-	pub activity: ActivityKind,
-	pub description_text: String,
+struct ProcessDescriptionData {
+	activity: ActivityKind,
+	description_text: String,
 }
 
 impl ProcessDescription for ProcessDescriptionWithPid {
