@@ -1,6 +1,6 @@
 use sysinfo::{ProcessExt, RefreshKind, System, SystemExt};
 
-#[derive(Debug, Eq, PartialEq, Hash)]
+#[derive(Debug, Eq, PartialEq, Hash, Clone)]
 pub enum ActivityKind {
 	Build,
 	Deploy,
@@ -17,38 +17,70 @@ impl std::fmt::Display for ActivityKind {
 	}
 }
 
-pub struct ProcessActivity {
-	pub pid: sysinfo::Pid,
-	pub activity: ActivityKind,
+pub trait ProcessDescription {
+	fn pid(&self) -> &sysinfo::Pid;
+	fn activity_kind(&self) -> &ActivityKind;
+	fn description(&self) -> &str;
 }
 
-fn get_process_activity(proc: &sysinfo::Process) -> Option<ActivityKind> {
+pub struct ProcessDescriptionWithPid {
+	pub pid: sysinfo::Pid,
+	pub description: ProcessDescriptionData,
+}
+
+pub struct ProcessDescriptionData {
+	pub activity: ActivityKind,
+	pub description_text: String,
+}
+
+impl ProcessDescription for ProcessDescriptionWithPid {
+	fn pid(&self) -> &sysinfo::Pid {
+		&self.pid
+	}
+	fn activity_kind(&self) -> &ActivityKind {
+		&self.description.activity
+	}
+	fn description(&self) -> &str {
+		&self.description.description_text
+	}
+}
+
+fn get_process_description(proc: &sysinfo::Process) -> Option<ProcessDescriptionData> {
 	let name = proc.name();
 	let cmd = proc.cmd();
 	if name.contains("qtcreator_ctrlc_stub") {
-		return Some(ActivityKind::Build);
+		return Some(ProcessDescriptionData {
+			activity: ActivityKind::Build,
+			description_text: "".to_owned(),
+		});
 	}
 
 	if name.contains("python") && cmd.iter().any(|a| a.contains("update_to_revisions.py")) {
-		return Some(ActivityKind::UpdateToRevision);
+		return Some(ProcessDescriptionData {
+			activity: ActivityKind::UpdateToRevision,
+			description_text: "".to_owned(),
+		});
 	}
 
 	if name.contains("jinnee-utility") && cmd.contains(&"--deploy_stand".to_owned()) {
-		return Some(ActivityKind::Deploy);
+		return Some(ProcessDescriptionData {
+			activity: ActivityKind::Deploy,
+			description_text: "".to_owned(),
+		});
 	}
 	None
 }
 
-pub fn get_activity_list() -> Vec<ProcessActivity> {
+pub fn get_activity_list() -> Vec<impl ProcessDescription> {
 	let sys = System::new_with_specifics(RefreshKind::new().with_processes());
 
 	sys.get_processes()
 		.iter()
 		.filter_map(|(_, proc)| {
-			if let Some(activity) = get_process_activity(proc) {
-				Some(ProcessActivity {
+			if let Some(data) = get_process_description(proc) {
+				Some(ProcessDescriptionWithPid {
 					pid: proc.pid(),
-					activity,
+					description: data,
 				})
 			} else {
 				None

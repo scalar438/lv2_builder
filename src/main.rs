@@ -10,6 +10,7 @@ use telegram_bot::types::refs::UserId;
 use telegram_bot::*;
 
 mod activity;
+use activity::ProcessDescription;
 
 #[derive(PartialEq, Eq)]
 enum Request {
@@ -82,7 +83,7 @@ impl BotData {
 					// There is at least one element
 
 					let mut msg = if act_list.len() == 1 {
-						format!("Current action: {}", elem.activity)
+						format!("Current action: {}", elem.activity_kind())
 					} else {
 						"There are many actions".to_owned()
 					};
@@ -90,8 +91,10 @@ impl BotData {
 						msg += "\n";
 						msg += "When the action completed you will be notified";
 
-						let h: std::collections::HashMap<_, _> =
-							act_list.into_iter().map(|a| (a.pid, a.activity)).collect();
+						let h: std::collections::HashMap<_, _> = act_list
+							.into_iter()
+							.map(|a| (*a.pid(), a.activity_kind().clone()))
+							.collect();
 
 						self.subscribers.insert(chat.id, h);
 					}
@@ -115,7 +118,7 @@ impl BotData {
 
 	fn process_timer(&mut self) {
 		let current_actions = activity::get_activity_list();
-		let pid_list_new = current_actions.iter().map(|a| &a.pid).collect();
+		let pid_list_new = current_actions.iter().map(|a| a.pid()).collect();
 
 		for (chat, actions) in self.subscribers.iter_mut() {
 			let pid_list_old: std::collections::HashSet<_> = actions.keys().collect();
