@@ -8,5 +8,5 @@ edition = "2018"
 telegram-bot = "0.7"
 futures = "0.3"
 tokio = {version = "0.2", features = ["macros", "time"]}
-sysinfo = "0.15"
-rust-ini = "0.15"
+sysinfo = "0.16"
+rust-ini = "0.16"
