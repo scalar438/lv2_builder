@@ -1,8 +1,3 @@
-extern crate futures;
-extern crate ini;
-extern crate sysinfo;
-extern crate telegram_bot;
-
 use futures::FutureExt;
 use futures::{pin_mut, select, StreamExt};
 use std::collections::HashMap;
@@ -22,8 +17,8 @@ enum Request {
 	UnknownRequest(String),
 }
 
-impl Request {
-	fn new(command: &str) -> Request {
+impl From<&str> for Request {
+	fn from(command: &str) -> Request {
 		let mut vs: Vec<_> = command
 			.split_ascii_whitespace()
 			.filter_map(|s| {
@@ -75,7 +70,7 @@ struct BotData {
 
 impl BotData {
 	fn process_message(&mut self, msg: &str, chat: &telegram_bot::types::User) {
-		let request_type = Request::new(msg);
+		let request_type = Request::from(msg);
 		let s = match request_type {
 			Request::Help => SendMessage::new(chat, get_string_help()),
 

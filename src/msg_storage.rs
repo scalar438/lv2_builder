@@ -3,13 +3,13 @@ struct MessageStorage {
 }
 
 impl MessageStorage {
-	fn new() -> Self {
+	pub fn new() -> Self {
 		Self {
 			msg_list: Vec::new(),
 		}
 	}
 
-	fn get_old_messages(&self, msg_age: &chrono::Duration) -> Vec<i32> {
+	pub fn get_old_messages(&self, msg_age: &chrono::Duration) -> Vec<i32> {
 		let too_old = chrono::Utc::now() - *msg_age;
 		self.msg_list
 			.iter()
@@ -17,11 +17,11 @@ impl MessageStorage {
 			.collect()
 	}
 
-	fn get_old_messages_std(&self, msg_age: &std::time::Duration) -> Vec<i32> {
+	pub fn get_old_messages_std(&self, msg_age: &std::time::Duration) -> Vec<i32> {
 		self.get_old_messages(&chrono::Duration::from_std(*msg_age).unwrap())
 	}
 
-	fn add_message(&mut self, msg_id: i32) {
+	pub fn add_message(&mut self, msg_id: i32) {
 		for (id, _) in self.msg_list.iter() {
 			if *id == msg_id {
 				return;
@@ -30,7 +30,7 @@ impl MessageStorage {
 		self.msg_list.push((msg_id, chrono::Utc::now()));
 	}
 
-	fn remove_messages(&mut self, msg_list: Vec<i32>) {
+	pub fn remove_messages(&mut self, msg_list: Vec<i32>) {
 		let mut msg_list = msg_list;
 		msg_list.sort();
 
