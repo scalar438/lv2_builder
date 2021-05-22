@@ -10,6 +10,8 @@ use telegram_bot::types::refs::UserId;
 use telegram_bot::*;
 
 mod activity;
+mod msg_storage;
+
 use activity::ProcessDescription;
 
 #[derive(PartialEq, Eq)]
