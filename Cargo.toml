@@ -5,8 +5,9 @@ authors = ["as.larin@tensor.ru"]
 edition = "2018"
 
 [dependencies]
-telegram-bot = "0.8"
+chrono = "0.4"
 futures = "0.3"
-tokio = {version = "0.2", features = ["macros", "time"]}
-sysinfo = "0.17"
 rust-ini = "0.17"
+sysinfo = "0.17"
+telegram-bot = "0.8"
+tokio = {version = "0.2", features = ["macros", "time"]}
