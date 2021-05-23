@@ -13,7 +13,13 @@ impl<T: Eq + Ord + Clone> MessageStorage<T> {
 		let too_old = chrono::Utc::now() - *msg_age;
 		self.msg_list
 			.iter()
-			.filter_map(|(id, date)| if *date < too_old { Some(id.clone()) } else { None })
+			.filter_map(|(id, date)| {
+				if *date < too_old {
+					Some(id.clone())
+				} else {
+					None
+				}
+			})
 			.collect()
 	}
 

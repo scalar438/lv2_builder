@@ -69,15 +69,11 @@ struct BotData {
 	api: telegram_bot::Api,
 	subscribers: AllActions,
 
-	msg_storage: msg_storage::MessageStorage<MessageId>,
+	msg_storage: msg_storage::MessageStorage<(ChatId, MessageId)>,
 }
 
 impl BotData {
-	async fn process_message(
-		&mut self,
-		msg: &str,
-		chat: &telegram_bot::types::User,
-	) -> Vec<MessageId> {
+	async fn process_message(&mut self, msg: &str, chat: &telegram_bot::types::User) {
 		let request_type = Request::from(msg);
 		let s = match request_type {
 			Request::Help => SendMessage::new(chat, get_string_help()),
@@ -118,14 +114,7 @@ impl BotData {
 			),
 		};
 
-		let res;
-		if let Ok(MessageOrChannelPost::Message(msg)) = self.api.send(s).await {
-			res = vec![msg.id];
-		} else {
-			res = Vec::new()
-		}
-
-		res
+		self.send_message(s).await
 	}
 
 	fn process_check_timer(&mut self) {
@@ -151,12 +140,25 @@ impl BotData {
 		self.subscribers.retain(|_, actions| actions.len() != 0);
 	}
 
-	fn delete_old_messages(&mut self) {
+	async fn delete_old_messages(&mut self) {
 		let old_msg = self
 			.msg_storage
 			.get_old_messages_std(&std::time::Duration::from_secs(60 * 60 * 24));
-		// Real deletion will be later
-		self.msg_storage.remove_messages(old_msg);
+		let mut deleted_msg = Vec::new();
+		for (chat_id, msg_id) in old_msg.iter() {
+			let req = telegram_bot::types::delete_message::DeleteMessage::new(chat_id, msg_id);
+			let res = self.api.send(req).await;
+			if res.is_ok() {
+				deleted_msg.push((*chat_id, *msg_id));
+			}
+		}
+		self.msg_storage.remove_messages(deleted_msg);
+	}
+
+	async fn send_message<'a>(&mut self, msg: SendMessage<'a>) {
+		if let Ok(MessageOrChannelPost::Message(msg)) = self.api.send(msg).await {
+			self.msg_storage.add_message((msg.chat.id(), msg.id));
+		}
 	}
 }
 
@@ -208,7 +210,9 @@ async fn main() {
 			username: None,
 		};
 		let chat = telegram_bot::chat::MessageChat::Private(user);
-		bot_data.api.spawn(SendMessage::new(chat, "Bot started"));
+		bot_data
+			.send_message(SendMessage::new(chat, "Bot started"))
+			.await;
 	}
 	loop {
 		let check_tick = check_timer.tick().fuse();
@@ -221,7 +225,7 @@ async fn main() {
 			msg = msg => {
 				if let Some(Ok(msg)) = msg {
 					if let UpdateKind::Message(message) = msg.kind {
-						bot_data.msg_storage.add_message(message.id);
+						bot_data.msg_storage.add_message((message.chat.id(), message.id));
 						if let MessageKind::Text { ref data, .. } = message.kind {
 							bot_data.process_message(&data, &message.from).await;
 						}
@@ -229,7 +233,7 @@ async fn main() {
 				}
 			},
 
-			_ = delete_msg_tick => bot_data.delete_old_messages(),
+			_ = delete_msg_tick => bot_data.delete_old_messages().await,
 
 			_ = check_tick => bot_data.process_check_timer(),
 		}
