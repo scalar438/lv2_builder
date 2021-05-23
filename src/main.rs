@@ -66,6 +66,8 @@ struct BotData {
 
 	api: telegram_bot::Api,
 	subscribers: AllActions,
+
+	msg_storage: msg_storage::MessageStorage,
 }
 
 impl BotData {
@@ -113,7 +115,7 @@ impl BotData {
 		self.api.spawn(s);
 	}
 
-	fn process_timer(&mut self) {
+	fn process_check_timer(&mut self) {
 		let current_actions = activity::get_activity_list();
 		let pid_list_new = current_actions.iter().map(|a| a.pid()).collect();
 
@@ -134,6 +136,14 @@ impl BotData {
 			}
 		}
 		self.subscribers.retain(|_, actions| actions.len() != 0);
+	}
+
+	fn delete_old_messages(&mut self) {
+		let old_msg = self
+			.msg_storage
+			.get_old_messages_std(&std::time::Duration::from_secs(60 * 60 * 24));
+		// Real deletion will be later
+		self.msg_storage.remove_messages(old_msg);
 	}
 }
 
@@ -164,12 +174,15 @@ async fn main() {
 	let api = Api::new(token);
 
 	let mut msg_stream = api.stream();
-	let mut timer = tokio::time::interval(std::time::Duration::from_secs(10));
+	let mut check_timer = tokio::time::interval(std::time::Duration::from_secs(10));
+	// Clear chat from old messages every 4 hours
+	let mut delete_msg_timer = tokio::time::interval(std::time::Duration::from_secs(60 * 60 * 4));
 
 	let mut bot_data = BotData {
 		api,
 		subscribers,
 		owner_id,
+		msg_storage: msg_storage::MessageStorage::new(),
 	};
 
 	if let Some(owner_id) = bot_data.owner_id {
@@ -185,10 +198,11 @@ async fn main() {
 		bot_data.api.spawn(SendMessage::new(chat, "Bot started"));
 	}
 	loop {
-		let tick = timer.tick().fuse();
+		let check_tick = check_timer.tick().fuse();
+		let delete_msg_tick = delete_msg_timer.tick().fuse();
 		let msg = msg_stream.next().fuse();
 
-		pin_mut!(tick, msg);
+		pin_mut!(check_tick, msg, delete_msg_tick);
 
 		select! {
 			msg = msg => {
@@ -201,7 +215,9 @@ async fn main() {
 				}
 			},
 
-			_ = tick => bot_data.process_timer(),
+			_ = delete_msg_tick => bot_data.delete_old_messages(),
+
+			_ = check_tick => bot_data.process_check_timer(),
 		}
 	}
 }
