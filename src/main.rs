@@ -1,7 +1,9 @@
 use futures::FutureExt;
 use futures::{pin_mut, select, StreamExt};
 use std::collections::HashMap;
+use telegram_bot::types::refs::MessageId;
 use telegram_bot::types::refs::UserId;
+use telegram_bot::types::MessageOrChannelPost;
 use telegram_bot::*;
 
 mod activity;
@@ -67,11 +69,15 @@ struct BotData {
 	api: telegram_bot::Api,
 	subscribers: AllActions,
 
-	msg_storage: msg_storage::MessageStorage,
+	msg_storage: msg_storage::MessageStorage<MessageId>,
 }
 
 impl BotData {
-	fn process_message(&mut self, msg: &str, chat: &telegram_bot::types::User) {
+	async fn process_message(
+		&mut self,
+		msg: &str,
+		chat: &telegram_bot::types::User,
+	) -> Vec<MessageId> {
 		let request_type = Request::from(msg);
 		let s = match request_type {
 			Request::Help => SendMessage::new(chat, get_string_help()),
@@ -112,7 +118,14 @@ impl BotData {
 			),
 		};
 
-		self.api.spawn(s);
+		let res;
+		if let Ok(MessageOrChannelPost::Message(msg)) = self.api.send(s).await {
+			res = vec![msg.id];
+		} else {
+			res = Vec::new()
+		}
+
+		res
 	}
 
 	fn process_check_timer(&mut self) {
@@ -208,8 +221,9 @@ async fn main() {
 			msg = msg => {
 				if let Some(Ok(msg)) = msg {
 					if let UpdateKind::Message(message) = msg.kind {
+						bot_data.msg_storage.add_message(message.id);
 						if let MessageKind::Text { ref data, .. } = message.kind {
-							bot_data.process_message(&data, &message.from);
+							bot_data.process_message(&data, &message.from).await;
 						}
 					}
 				}
