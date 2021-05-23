@@ -1,4 +1,4 @@
-struct MessageStorage {
+pub struct MessageStorage {
 	msg_list: Vec<(i32, chrono::DateTime<chrono::Utc>)>,
 }
 
@@ -34,17 +34,8 @@ impl MessageStorage {
 		let mut msg_list = msg_list;
 		msg_list.sort();
 
-		self.msg_list = self
-			.msg_list
-			.iter()
-			.filter_map(|(id, date)| {
-				if msg_list.binary_search(id).is_err() {
-					Some((*id, *date))
-				} else {
-					None
-				}
-			})
-			.collect();
+		self.msg_list
+			.retain(|(id, _)| msg_list.binary_search(id).is_err());
 	}
 }
 
