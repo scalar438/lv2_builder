@@ -113,6 +113,7 @@ impl<T: Clone + Eq + Ord + serde::Serialize + for<'a> serde::Deserialize<'a>> Me
 mod test {
 
 	use super::*;
+	use std::io::{Seek, SeekFrom};
 
 	#[test]
 	fn test_1() {
@@ -130,5 +131,30 @@ mod test {
 			msg.get_old_messages(&chrono::Duration::milliseconds(500)),
 			[2]
 		);
+	}
+
+	#[test]
+	fn test_2() {
+		let mut storage_file = tempfile::tempfile().unwrap();
+		{
+			let cur_dt = chrono::Utc::now();
+
+			let mut new_msg_list = Vec::new();
+			new_msg_list.push((1, cur_dt));
+			new_msg_list.push((2, cur_dt - chrono::Duration::days(1)));
+			new_msg_list.push((3, cur_dt - chrono::Duration::days(2)));
+			new_msg_list.push((4, cur_dt - chrono::Duration::days(3)));
+
+			let mut msg = MessageStorage::new_from_file(&mut storage_file);
+			msg.msg_list = new_msg_list;
+			msg.write_messages_to_file(&mut storage_file).unwrap();
+		}
+		storage_file.seek(SeekFrom::Start(0)).unwrap();
+
+		{
+			let msg = MessageStorage::<i32>::new_from_file(&mut storage_file);
+			let msgs = msg.get_old_messages(&chrono::Duration::hours(36));
+			assert_eq!(msgs, [3, 4]);
+		}
 	}
 }
