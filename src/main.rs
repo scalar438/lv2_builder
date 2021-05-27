@@ -117,26 +117,32 @@ impl BotData {
 		self.send_message(s).await
 	}
 
-	fn process_check_timer(&mut self) {
+	async fn process_check_timer(&mut self) {
 		let current_actions = activity::get_activity_list();
 		let pid_list_new = current_actions.iter().map(|a| a.pid()).collect();
+
+		let mut msg_list = Vec::new();
 
 		for (chat, actions) in self.subscribers.iter_mut() {
 			let pid_list_old: std::collections::HashSet<_> = actions.keys().collect();
 			assert_ne!(pid_list_old.len(), 0);
 
+			// List of completed actions
 			let completed_list: Vec<_> = pid_list_old
 				.difference(&pid_list_new)
 				.map(|a| **a)
 				.collect();
 			for pid in completed_list {
 				if let Some(act) = actions.get(&pid) {
-					self.api
-						.spawn(SendMessage::new(chat.clone(), format!("{} completed", act)));
+					msg_list.push(SendMessage::new(chat.clone(), format!("{} completed", act)));
 				}
 				actions.remove(&pid);
 			}
 		}
+		for msg in msg_list {
+			self.send_message(msg).await;
+		}
+
 		self.subscribers.retain(|_, actions| actions.len() != 0);
 	}
 
@@ -235,7 +241,7 @@ async fn main() {
 
 			_ = delete_msg_tick => bot_data.delete_old_messages().await,
 
-			_ = check_tick => bot_data.process_check_timer(),
+			_ = check_tick => bot_data.process_check_timer().await,
 		}
 	}
 }
