@@ -155,6 +155,9 @@ mod test {
 			let msg = MessageStorage::<i32>::new_from_file(&mut storage_file);
 			let msgs = msg.get_old_messages(&chrono::Duration::hours(36));
 			assert_eq!(msgs, [3, 4]);
+
+			let msgs = msg.get_old_messages(&chrono::Duration::hours(12));
+			assert_eq!(msgs, [2, 3, 4]);
 		}
 	}
 }
