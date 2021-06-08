@@ -84,6 +84,7 @@ impl<T: Clone + Eq + Ord + serde::Serialize + for<'a> serde::Deserialize<'a>> Me
 		let mut f = std::fs::OpenOptions::new()
 			.write(true)
 			.create(true)
+			.truncate(true)
 			.open(MessageStorage::<T>::get_file_path())?;
 
 		self.write_messages_to_file(&mut f)
