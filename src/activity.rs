@@ -1,6 +1,6 @@
 use sysinfo::{ProcessExt, RefreshKind, System, SystemExt};
 
-#[derive(Debug, Eq, PartialEq, Hash, Clone)]
+#[derive(Debug, Eq, PartialEq, Clone)]
 pub enum ActivityKind {
 	Build,
 	Deploy,
