@@ -10,7 +10,8 @@ futures = "0.3"
 rust-ini = "0.17"
 serde = "1.0"
 serde_json = "1.0"
-sysinfo = "0.17"
+# 0.19 and above does not compile
+sysinfo = "0.18"
 telegram-bot = "0.8"
 tokio = {version = "0.2", features = ["macros", "time"]}
 
