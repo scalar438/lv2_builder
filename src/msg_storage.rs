@@ -6,14 +6,16 @@ pub struct MessageStorage<T: Eq + Ord + serde::Serialize + for<'a> serde::Deseri
 }
 
 impl<T: Clone + Eq + Ord + serde::Serialize + for<'a> serde::Deserialize<'a>> MessageStorage<T> {
+	fn new_without_file() -> Self {
+		Self {
+			msg_list: Vec::new(),
+		}
+	}
+
 	pub fn new() -> Self {
 		match std::fs::File::open(MessageStorage::<T>::get_file_path()) {
-			Ok(mut f) => return MessageStorage::new_from_file(&mut f),
-			Err(_) => {
-				return Self {
-					msg_list: Vec::new(),
-				}
-			}
+			Ok(mut f) => MessageStorage::new_from_file(&mut f),
+			Err(_) => MessageStorage::new_without_file(),
 		}
 	}
 
@@ -118,7 +120,7 @@ mod test {
 
 	#[test]
 	fn test_1() {
-		let mut msg = MessageStorage::new();
+		let mut msg = MessageStorage::new_without_file();
 		msg.add_message(1);
 		msg.add_message(2);
 		std::thread::sleep(std::time::Duration::from_secs(1));
