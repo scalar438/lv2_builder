@@ -23,7 +23,7 @@ pub trait ProcessDescription {
 	fn description(&self) -> &str;
 }
 
-struct ProcessDescriptionWithPid {
+pub struct ProcessDescriptionWithPid {
 	pid: sysinfo::Pid,
 	description: ProcessDescriptionData,
 }
@@ -74,7 +74,7 @@ fn get_process_description(proc: &sysinfo::Process) -> Option<ProcessDescription
 pub fn get_activity_list() -> Vec<impl ProcessDescription> {
 	let sys = System::new_with_specifics(RefreshKind::new().with_processes());
 
-	sys.get_processes()
+	sys.processes()
 		.iter()
 		.filter_map(|(_, proc)| {
 			if let Some(data) = get_process_description(proc) {
