@@ -1,5 +1,5 @@
 use futures::FutureExt;
-use futures::{pin_mut, select, StreamExt};
+use futures::{pin_mut, StreamExt};
 use std::collections::HashMap;
 use telegram_bot::types::refs::MessageId;
 use telegram_bot::types::refs::UserId;
@@ -227,7 +227,7 @@ async fn main() {
 
 		pin_mut!(check_tick, msg, delete_msg_tick);
 
-		select! {
+		tokio::select! {
 			msg = msg => {
 				if let Some(Ok(msg)) = msg {
 					if let UpdateKind::Message(message) = msg.kind {
