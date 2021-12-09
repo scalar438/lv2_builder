@@ -1,3 +1,4 @@
+use activity::ProcessDescription;
 use futures::FutureExt;
 use futures::{pin_mut, select, StreamExt};
 use std::collections::HashMap;
@@ -8,8 +9,6 @@ use telegram_bot::*;
 
 mod activity;
 mod msg_storage;
-
-use activity::ProcessDescription;
 
 #[derive(PartialEq, Eq)]
 enum Request {
@@ -60,7 +59,7 @@ fn get_string_help() -> String {
 	.to_string()
 }
 
-type UserActions = HashMap<sysinfo::Pid, activity::ActivityKind>;
+type UserActions = HashMap<sysinfo::Pid, (activity::ActivityKind, String)>;
 type AllActions = HashMap<UserId, UserActions>;
 
 struct BotData {
@@ -94,7 +93,12 @@ impl BotData {
 
 						let h: std::collections::HashMap<_, _> = act_list
 							.into_iter()
-							.map(|a| (*a.pid(), a.activity_kind().clone()))
+							.map(|a| {
+								(
+									*a.pid(),
+									(a.activity_kind().clone(), a.description().to_owned()),
+								)
+							})
 							.collect();
 
 						self.subscribers.insert(chat.id, h);
@@ -134,7 +138,13 @@ impl BotData {
 				.collect();
 			for pid in completed_list {
 				if let Some(act) = actions.get(&pid) {
-					msg_list.push(SendMessage::new(chat.clone(), format!("{} completed", act)));
+					let mut msg = format!("{} completed", act.0);
+					if !act.1.is_empty() && act.0 == activity::ActivityKind::Build {
+						msg += ", build path = \"";
+						msg += &act.1;
+						msg += "\"";
+					}
+					msg_list.push(SendMessage::new(chat.clone(), msg));
 				}
 				actions.remove(&pid);
 			}

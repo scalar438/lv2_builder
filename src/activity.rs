@@ -49,9 +49,19 @@ fn get_process_description(proc: &sysinfo::Process) -> Option<ProcessDescription
 	let name = proc.name();
 	let cmd = proc.cmd();
 	if name.contains("qtcreator_ctrlc_stub") {
+		let build_path;
+		if let Some(pos) = cmd.iter().position(|r| r == "--build") {
+			if cmd.len() > pos + 1 {
+				build_path = cmd[pos + 1].clone();
+			} else {
+				build_path = "".to_owned();
+			}
+		} else {
+			build_path = "".to_owned()
+		}
 		return Some(ProcessDescriptionData {
 			activity: ActivityKind::Build,
-			description_text: "".to_owned(),
+			description_text: build_path,
 		});
 	}
 
