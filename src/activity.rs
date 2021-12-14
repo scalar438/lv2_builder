@@ -65,10 +65,21 @@ fn get_process_description(proc: &sysinfo::Process) -> Option<ProcessDescription
 		});
 	}
 
-	if name.contains("python") && cmd.iter().any(|a| a.contains("update_to_revisions.py")) {
+	let arg_item = cmd
+		.iter()
+		.find(|a| a.contains("update_to_revisions.py"))
+		.map(|x| x.strip_suffix("online-inside\\update_to_revisions.py"));
+	if name.contains("python") && arg_item.is_some() {
+		let opt_path = arg_item.unwrap();
+		let path;
+		if let Some(x) = opt_path {
+			path = x.to_string();
+		} else {
+			path = "".to_owned();
+		}
 		return Some(ProcessDescriptionData {
 			activity: ActivityKind::UpdateToRevision,
-			description_text: "".to_owned(),
+			description_text: path,
 		});
 	}
 
