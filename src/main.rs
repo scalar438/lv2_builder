@@ -139,10 +139,10 @@ impl BotData {
 			for pid in completed_list {
 				if let Some(act) = actions.get(&pid) {
 					let mut msg = format!("{} completed", act.0);
-					if !act.1.is_empty() && act.0 == activity::ActivityKind::Build {
-						msg += ", build path = \"";
+					if !act.1.is_empty() {
+						msg += ", path = `\"";
 						msg += &act.1;
-						msg += "\"";
+						msg += "\"`";
 					}
 					msg_list.push(SendMessage::new(chat.clone(), msg));
 				}
