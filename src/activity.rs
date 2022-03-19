@@ -1,4 +1,4 @@
-use sysinfo::{ProcessExt, RefreshKind, System, SystemExt};
+use sysinfo::{ProcessExt, ProcessRefreshKind, RefreshKind, System, SystemExt};
 
 #[derive(Debug, Eq, PartialEq, Clone)]
 pub enum ActivityKind {
@@ -93,7 +93,9 @@ fn get_process_description(proc: &sysinfo::Process) -> Option<ProcessDescription
 }
 
 pub fn get_activity_list() -> Vec<impl ProcessDescription> {
-	let sys = System::new_with_specifics(RefreshKind::new().with_processes());
+	let sys = System::new_with_specifics(
+		RefreshKind::new().with_processes(ProcessRefreshKind::everything()),
+	);
 
 	sys.processes()
 		.iter()
