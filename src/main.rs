@@ -85,11 +85,11 @@ impl BotData {
 					let mut msg = if act_list.len() == 1 {
 						format!("Current action: {}", elem.activity_kind())
 					} else {
-						"There are many actions".to_owned()
+						"There are several running actions".to_owned()
 					};
 					if request_type == Request::Subscribe {
 						msg += "\n";
-						msg += "When the action completed you will be notified";
+						msg += "When any of them completed you will be notified";
 
 						let h: std::collections::HashMap<_, _> = act_list
 							.into_iter()
