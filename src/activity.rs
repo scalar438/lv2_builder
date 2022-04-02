@@ -93,9 +93,8 @@ fn get_process_description(proc: &sysinfo::Process) -> Option<ProcessDescription
 }
 
 pub fn get_activity_list() -> Vec<impl ProcessDescription> {
-	let sys = System::new_with_specifics(
-		RefreshKind::new().with_processes(ProcessRefreshKind::everything()),
-	);
+	let sys =
+		System::new_with_specifics(RefreshKind::new().with_processes(ProcessRefreshKind::new()));
 
 	sys.processes()
 		.iter()

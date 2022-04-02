@@ -89,7 +89,7 @@ impl BotData {
 					};
 					if request_type == Request::Subscribe {
 						msg += "\n";
-						msg += "When any of them completed you will be notified";
+						msg += "When action completed you will be notified";
 
 						let h: std::collections::HashMap<_, _> = act_list
 							.into_iter()
