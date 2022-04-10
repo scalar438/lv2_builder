@@ -2,7 +2,7 @@
 name = "sbis_build_status"
 version = "0.1.0"
 authors = ["as.larin@tensor.ru"]
-edition = "2018"
+edition = "2021"
 
 [dependencies]
 chrono = "0.4"

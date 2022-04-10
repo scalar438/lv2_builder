@@ -161,8 +161,14 @@ impl BotData {
 			.msg_storage
 			.get_old_messages_std(&std::time::Duration::from_secs(60 * 60 * 24));
 		let mut deleted_msg = Vec::new();
+		let mut is_first_iter = true;
 		for (chat_id, msg_id) in old_msg.iter() {
 			let req = telegram_bot::types::delete_message::DeleteMessage::new(chat_id, msg_id);
+			if !is_first_iter {
+				tokio::time::delay_for(std::time::Duration::from_millis(500)).await;
+			} else {
+				is_first_iter = false;
+			}
 			let res = self.api.send(req).await;
 			if res.is_ok() {
 				deleted_msg.push((*chat_id, *msg_id));
