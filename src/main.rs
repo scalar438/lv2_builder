@@ -212,7 +212,7 @@ async fn main() {
 
 	let mut msg_stream = api.stream();
 	let mut check_timer = tokio::time::interval(std::time::Duration::from_secs(10));
-	// Clear chat from old messages every 4 hours
+	// Clear chat from the old messages every 4 hours
 	let mut delete_msg_timer = tokio::time::interval(std::time::Duration::from_secs(60 * 60 * 4));
 
 	let mut bot_data = BotData {
