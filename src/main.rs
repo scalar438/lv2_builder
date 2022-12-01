@@ -159,7 +159,7 @@ impl BotData {
 	async fn delete_old_messages(&mut self) {
 		let old_msg = self
 			.msg_storage
-			.get_old_messages_std(&std::time::Duration::from_secs(60 * 60 * 24));
+			.get_old_messages(&std::time::Duration::from_secs(60 * 60 * 24));
 		let mut deleted_msg = Vec::new();
 		let mut is_first_iter = true;
 		for (chat_id, msg_id) in old_msg.iter() {

@@ -41,7 +41,7 @@ impl<T: Clone + Eq + Ord + serde::Serialize + for<'a> serde::Deserialize<'a>> Me
 		}
 	}
 
-	pub fn get_old_messages(&self, msg_age: &chrono::Duration) -> Vec<T> {
+	fn get_old_messages_impl(&self, msg_age: &chrono::Duration) -> Vec<T> {
 		let too_old = chrono::Utc::now() - *msg_age;
 		self.msg_list
 			.iter()
@@ -55,8 +55,8 @@ impl<T: Clone + Eq + Ord + serde::Serialize + for<'a> serde::Deserialize<'a>> Me
 			.collect()
 	}
 
-	pub fn get_old_messages_std(&self, msg_age: &std::time::Duration) -> Vec<T> {
-		self.get_old_messages(&chrono::Duration::from_std(*msg_age).unwrap())
+	pub fn get_old_messages(&self, msg_age: &std::time::Duration) -> Vec<T> {
+		self.get_old_messages_impl(&chrono::Duration::from_std(*msg_age).unwrap())
 	}
 
 	pub fn add_message(&mut self, msg_id: T) {
@@ -126,12 +126,12 @@ mod test {
 		std::thread::sleep(std::time::Duration::from_secs(1));
 		msg.add_message(3);
 		assert_eq!(
-			msg.get_old_messages(&chrono::Duration::milliseconds(500)),
+			msg.get_old_messages_impl(&chrono::Duration::milliseconds(500)),
 			[1, 2]
 		);
 		msg.remove_messages(vec![1]);
 		assert_eq!(
-			msg.get_old_messages(&chrono::Duration::milliseconds(500)),
+			msg.get_old_messages_impl(&chrono::Duration::milliseconds(500)),
 			[2]
 		);
 	}
@@ -156,10 +156,10 @@ mod test {
 
 		{
 			let msg = MessageStorage::<i32>::new_from_file(&mut storage_file);
-			let msgs = msg.get_old_messages(&chrono::Duration::hours(36));
+			let msgs = msg.get_old_messages_impl(&chrono::Duration::hours(36));
 			assert_eq!(msgs, [3, 4]);
 
-			let msgs = msg.get_old_messages(&chrono::Duration::hours(12));
+			let msgs = msg.get_old_messages_impl(&chrono::Duration::hours(12));
 			assert_eq!(msgs, [2, 3, 4]);
 		}
 	}
