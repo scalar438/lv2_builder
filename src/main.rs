@@ -7,6 +7,8 @@ use telegram_bot::types::refs::UserId;
 use telegram_bot::types::MessageOrChannelPost;
 use telegram_bot::*;
 
+use tokio_old::runtime::Builder;
+
 mod activity;
 mod msg_storage;
 mod telegram_api_wrapper;
@@ -169,7 +171,7 @@ impl<T: telegram_api_wrapper::Api> BotData<T> {
 		let mut is_first_iter = true;
 		for (chat_id, msg_id) in old_msg.iter() {
 			if !is_first_iter {
-				tokio::time::delay_for(std::time::Duration::from_millis(500)).await;
+				tokio_old::time::delay_for(std::time::Duration::from_millis(500)).await;
 			} else {
 				is_first_iter = false;
 			}
@@ -212,66 +214,70 @@ fn read_config() -> (String, Option<UserId>) {
 	(token.to_owned(), owner_id)
 }
 
-#[tokio::main]
-async fn main() {
-	let (token, owner_id) = read_config();
+fn main() {
+	let mut runtime = tokio_old::runtime::Builder::new().build().unwrap();
 
-	let subscribers = HashMap::new();
-	let api = Api::new(token.clone());
-	let api2 = telegram_api_wrapper::create_api(&token);
+	runtime.block_on(async {
+		let (token, owner_id) = read_config();
 
-	let mut msg_stream = api.stream();
-	let mut check_timer = tokio::time::interval(std::time::Duration::from_secs(10));
-	// Clear the chat from old messages every 4 hours
-	let mut delete_msg_timer = tokio::time::interval(std::time::Duration::from_secs(60 * 60 * 4));
+		let subscribers = HashMap::new();
+		let api = Api::new(token.clone());
+		let api2 = telegram_api_wrapper::create_api(&token);
 
-	let mut bot_data = BotData {
-		api,
-		api2,
-		subscribers,
-		owner_id,
-		msg_storage: msg_storage::MessageStorage::new(),
-	};
+		let mut msg_stream = api.stream();
+		let mut check_timer = tokio_old::time::interval(std::time::Duration::from_secs(10));
+		// Clear the chat from old messages every 4 hours
+		let mut delete_msg_timer =
+			tokio_old::time::interval(std::time::Duration::from_secs(60 * 60 * 4));
 
-	if let Some(owner_id) = bot_data.owner_id {
-		let user = telegram_bot::chat::User {
-			first_name: "".to_string(),
-			id: owner_id,
-			is_bot: false,
-			language_code: None,
-			last_name: None,
-			username: None,
+		let mut bot_data = BotData {
+			api,
+			api2,
+			subscribers,
+			owner_id,
+			msg_storage: msg_storage::MessageStorage::new(),
 		};
-		let chat = telegram_bot::chat::MessageChat::Private(user);
-		bot_data
-			.send_message(SendMessage::new(chat, "Bot started"))
-			.await;
-	}
-	loop {
-		let check_tick = check_timer.tick().fuse();
-		let delete_msg_tick = delete_msg_timer.tick().fuse();
-		let msg = msg_stream.next().fuse();
 
-		pin_mut!(check_tick, msg, delete_msg_tick);
+		if let Some(owner_id) = bot_data.owner_id {
+			let user = telegram_bot::chat::User {
+				first_name: "".to_string(),
+				id: owner_id,
+				is_bot: false,
+				language_code: None,
+				last_name: None,
+				username: None,
+			};
+			let chat = telegram_bot::chat::MessageChat::Private(user);
+			bot_data
+				.send_message(SendMessage::new(chat, "Bot started"))
+				.await;
+		}
+		loop {
+			let check_tick = check_timer.tick().fuse();
+			let delete_msg_tick = delete_msg_timer.tick().fuse();
+			let msg = msg_stream.next().fuse();
 
-		select! {
-			msg = msg => {
-				if let Some(Ok(msg)) = msg {
-					if let UpdateKind::Message(message) = msg.kind {
-						let chat_id = telegram_api_wrapper::ChatId(i64::from(message.chat.id()));
-						let msg_id = telegram_api_wrapper::MessageId(i64::from(message.id));
+			pin_mut!(check_tick, msg, delete_msg_tick);
 
-						bot_data.msg_storage.add_message((chat_id, msg_id));
-						if let MessageKind::Text { ref data, .. } = message.kind {
-							bot_data.process_message(&data, &message.from).await;
+			select! {
+				msg = msg => {
+					if let Some(Ok(msg)) = msg {
+						if let UpdateKind::Message(message) = msg.kind {
+							let chat_id = telegram_api_wrapper::ChatId(i64::from(message.chat.id()));
+							let msg_id = telegram_api_wrapper::MessageId(i64::from(message.id));
+
+							bot_data.msg_storage.add_message((chat_id, msg_id));
+							if let MessageKind::Text { ref data, .. } = message.kind {
+								bot_data.process_message(&data, &message.from).await;
+							}
 						}
 					}
-				}
-			},
+				},
 
-			_ = delete_msg_tick => bot_data.delete_old_messages().await,
+				_ = delete_msg_tick => bot_data.delete_old_messages().await,
 
-			_ = check_tick => bot_data.process_check_timer().await,
+				_ = check_tick => bot_data.process_check_timer().await,
+			}
 		}
-	}
+	});
 }
