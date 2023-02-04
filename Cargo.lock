@@ -1462,6 +1462,7 @@ dependencies = [
  "teloxide",
  "tempfile",
  "tokio 0.2.25",
+ "tokio 1.25.0",
 ]
 
 [[package]]

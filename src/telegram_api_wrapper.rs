@@ -43,13 +43,21 @@ pub fn create_api(token: &str) -> impl Api {
 
 struct ApiWrapper {
 	api: teloxide::Bot,
+	tokio_runtime: tokio_new::runtime::Runtime,
 }
 
 #[async_trait::async_trait]
 impl Api for ApiWrapper {
 	fn create(token: &str) -> Self {
 		let api = teloxide::Bot::new(token);
-		Self { api }
+		let runtime = tokio_new::runtime::Builder::new_current_thread()
+			.enable_all()
+			.build()
+			.unwrap();
+		Self {
+			api,
+			tokio_runtime: runtime,
+		}
 	}
 
 	async fn send_message<M: ToString + Send>(
@@ -65,10 +73,13 @@ impl Api for ApiWrapper {
 			teloxide::prelude::ChatId(chat_id.0),
 			teloxide::types::MessageId(msg_id.0.try_into().unwrap()),
 		);
-		let res = req.send().await;
-		match res {
-			Ok(_) => Ok(()),
-			Err(_) => Err(TelegramError::GeneralError("Error string".to_owned())),
-		}
+
+		self.tokio_runtime.block_on(async {
+			let res = req.send().await;
+			match res {
+				Ok(_) => Ok(()),
+				Err(_) => Err(TelegramError::GeneralError("Error string".to_owned())),
+			}
+		})
 	}
 }
