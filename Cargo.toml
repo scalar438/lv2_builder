@@ -13,6 +13,8 @@ serde_json = "1.0"
 sysinfo = "0.25"
 telegram-bot = "0.8"
 tokio = {version = "0.2", features = ["macros", "time"]}
+async-trait = "0.1.59"
+teloxide = "0.12.0"
 
 [dev-dependencies]
 tempfile ="3.3"

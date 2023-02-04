@@ -9,6 +9,7 @@ use telegram_bot::*;
 
 mod activity;
 mod msg_storage;
+mod telegram_api_wrapper;
 
 #[derive(PartialEq, Eq)]
 enum Request {
@@ -62,16 +63,20 @@ fn get_string_help() -> String {
 type UserActions = HashMap<sysinfo::Pid, (activity::ActivityKind, String)>;
 type AllActions = HashMap<UserId, UserActions>;
 
-struct BotData {
+struct BotData<T> {
 	owner_id: Option<UserId>,
 
 	api: telegram_bot::Api,
+	api2: T,
 	subscribers: AllActions,
 
-	msg_storage: msg_storage::MessageStorage<(ChatId, MessageId)>,
+	msg_storage: msg_storage::MessageStorage<(
+		telegram_api_wrapper::ChatId,
+		telegram_api_wrapper::MessageId,
+	)>,
 }
 
-impl BotData {
+impl<T: telegram_api_wrapper::Api> BotData<T> {
 	async fn process_message(&mut self, msg: &str, chat: &telegram_bot::types::User) {
 		let request_type = Request::from(msg);
 		let s = match request_type {
@@ -89,7 +94,7 @@ impl BotData {
 					};
 					if request_type == Request::Subscribe {
 						msg += "\n";
-						msg += "When action completed you will be notified";
+						msg += "When action have been completed you will be notified";
 
 						let h: std::collections::HashMap<_, _> = act_list
 							.into_iter()
@@ -163,15 +168,17 @@ impl BotData {
 		let mut deleted_msg = Vec::new();
 		let mut is_first_iter = true;
 		for (chat_id, msg_id) in old_msg.iter() {
-			let req = telegram_bot::types::delete_message::DeleteMessage::new(chat_id, msg_id);
 			if !is_first_iter {
 				tokio::time::delay_for(std::time::Duration::from_millis(500)).await;
 			} else {
 				is_first_iter = false;
 			}
-			let res = self.api.send(req).await;
+			let res = self
+				.api2
+				.delete_message(chat_id.clone(), msg_id.clone())
+				.await;
 			if res.is_ok() {
-				deleted_msg.push((*chat_id, *msg_id));
+				deleted_msg.push((chat_id.clone(), msg_id.clone()));
 			}
 		}
 		self.msg_storage.remove_messages(deleted_msg);
@@ -179,7 +186,9 @@ impl BotData {
 
 	async fn send_message<'a>(&mut self, msg: SendMessage<'a>) {
 		if let Ok(MessageOrChannelPost::Message(msg)) = self.api.send(msg).await {
-			self.msg_storage.add_message((msg.chat.id(), msg.id));
+			let chat_id = telegram_api_wrapper::ChatId(i64::from(msg.chat.id()));
+			let msg_id = telegram_api_wrapper::MessageId(i64::from(msg.id));
+			self.msg_storage.add_message((chat_id, msg_id));
 		}
 	}
 }
@@ -208,15 +217,17 @@ async fn main() {
 	let (token, owner_id) = read_config();
 
 	let subscribers = HashMap::new();
-	let api = Api::new(token);
+	let api = Api::new(token.clone());
+	let api2 = telegram_api_wrapper::create_api(&token);
 
 	let mut msg_stream = api.stream();
 	let mut check_timer = tokio::time::interval(std::time::Duration::from_secs(10));
-	// Clear chat from the old messages every 4 hours
+	// Clear the chat from old messages every 4 hours
 	let mut delete_msg_timer = tokio::time::interval(std::time::Duration::from_secs(60 * 60 * 4));
 
 	let mut bot_data = BotData {
 		api,
+		api2,
 		subscribers,
 		owner_id,
 		msg_storage: msg_storage::MessageStorage::new(),
@@ -247,7 +258,10 @@ async fn main() {
 			msg = msg => {
 				if let Some(Ok(msg)) = msg {
 					if let UpdateKind::Message(message) = msg.kind {
-						bot_data.msg_storage.add_message((message.chat.id(), message.id));
+						let chat_id = telegram_api_wrapper::ChatId(i64::from(message.chat.id()));
+						let msg_id = telegram_api_wrapper::MessageId(i64::from(message.id));
+
+						bot_data.msg_storage.add_message((chat_id, msg_id));
 						if let MessageKind::Text { ref data, .. } = message.kind {
 							bot_data.process_message(&data, &message.from).await;
 						}
