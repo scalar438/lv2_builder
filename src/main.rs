@@ -215,7 +215,11 @@ fn read_config() -> (String, Option<UserId>) {
 }
 
 fn main() {
-	let mut runtime = tokio_old::runtime::Builder::new().build().unwrap();
+	let mut runtime = tokio_old::runtime::Builder::new()
+		.enable_all()
+		.basic_scheduler()
+		.build()
+		.unwrap();
 
 	runtime.block_on(async {
 		let (token, owner_id) = read_config();
