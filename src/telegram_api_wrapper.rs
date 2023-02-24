@@ -12,16 +12,22 @@ type TlgResult<T> = Result<T, TelegramError>;
 #[derive(PartialOrd, Ord, PartialEq, Eq, Serialize, Deserialize, Clone)]
 pub struct ChatId(pub i64);
 
+impl From<teloxide::prelude::ChatId> for ChatId {
+	fn from(chat: teloxide::prelude::ChatId) -> ChatId {
+		ChatId(chat.0)
+	}
+}
+
 #[derive(PartialOrd, Ord, PartialEq, Eq, Serialize, Deserialize, Clone)]
 pub struct UserId(pub i64);
 
 #[derive(PartialOrd, Ord, PartialEq, Eq, Serialize, Deserialize, Clone)]
 pub struct MessageId(pub i64);
 
-struct ReseivedMessage {
+pub struct ReseivedMessage {
 	chat_id: ChatId,
 	user_id: UserId,
-	message_id: MessageId,
+	pub message_id: MessageId,
 }
 
 #[async_trait::async_trait]
@@ -65,7 +71,20 @@ impl Api for ApiWrapper {
 		chat_id: ChatId,
 		msg: M,
 	) -> TlgResult<ReseivedMessage> {
-		unimplemented!()
+		let msg_str = msg.to_string();
+		let chat_id = teloxide::types::Recipient::Id(teloxide::prelude::ChatId(chat_id.0));
+		let req = self.api.send_message(chat_id, msg_str);
+		self.tokio_runtime.block_on(async {
+			let res = req.send().await;
+			match res {
+				Ok(msg) => Ok(ReseivedMessage {
+					chat_id: ChatId(msg.chat.id.0),
+					user_id: UserId(msg.chat.id.0),
+					message_id: MessageId(msg.id.0 as i64),
+				}),
+				Err(_) => Err(TelegramError::GeneralError("Error string".to_owned())),
+			}
+		})
 	}
 
 	async fn delete_message(&mut self, chat_id: ChatId, msg_id: MessageId) -> TlgResult<()> {

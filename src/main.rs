@@ -151,13 +151,15 @@ impl<T: telegram_api_wrapper::Api> BotData<T> {
 						msg += &act.1;
 						msg += "\"`";
 					}
-					msg_list.push(SendMessage::new(chat.clone(), msg));
+					;
+					let chat_id = telegram_api_wrapper::ChatId(i64::from(chat.to_user_id()));
+					msg_list.push(( chat_id, msg));
 				}
 				actions.remove(&pid);
 			}
 		}
-		for msg in msg_list {
-			self.send_message(msg).await;
+		for (chat, msg) in msg_list {
+			self.send_message_new_api(chat, msg).await;
 		}
 
 		self.subscribers.retain(|_, actions| actions.len() != 0);
@@ -190,6 +192,13 @@ impl<T: telegram_api_wrapper::Api> BotData<T> {
 		if let Ok(MessageOrChannelPost::Message(msg)) = self.api.send(msg).await {
 			let chat_id = telegram_api_wrapper::ChatId(i64::from(msg.chat.id()));
 			let msg_id = telegram_api_wrapper::MessageId(i64::from(msg.id));
+			self.msg_storage.add_message((chat_id, msg_id));
+		}
+	}
+
+	async fn send_message_new_api<M: ToString + Send>(&mut self, chat_id: telegram_api_wrapper::ChatId, s: M) {
+		if let Ok(msg) = self.api2.send_message(chat_id.clone(), s).await {
+			let msg_id = msg.message_id;
 			self.msg_storage.add_message((chat_id, msg_id));
 		}
 	}
@@ -252,8 +261,9 @@ fn main() {
 				username: None,
 			};
 			let chat = telegram_bot::chat::MessageChat::Private(user);
+			let chat_id_new = telegram_api_wrapper::ChatId(i64::from(owner_id.to_user_id()));
 			bot_data
-				.send_message(SendMessage::new(chat, "Bot started"))
+				.send_message_new_api(chat_id_new, "Bot has started")
 				.await;
 		}
 		loop {
