@@ -150,10 +150,9 @@ impl<T: telegram_api_wrapper::Api> BotData<T> {
 						msg += ", path = `\"";
 						msg += &act.1;
 						msg += "\"`";
-					}
-					;
+					};
 					let chat_id = telegram_api_wrapper::ChatId(i64::from(chat.to_user_id()));
-					msg_list.push(( chat_id, msg));
+					msg_list.push((chat_id, msg));
 				}
 				actions.remove(&pid);
 			}
@@ -196,7 +195,11 @@ impl<T: telegram_api_wrapper::Api> BotData<T> {
 		}
 	}
 
-	async fn send_message_new_api<M: ToString + Send>(&mut self, chat_id: telegram_api_wrapper::ChatId, s: M) {
+	async fn send_message_new_api<M: ToString + Send>(
+		&mut self,
+		chat_id: telegram_api_wrapper::ChatId,
+		s: M,
+	) {
 		if let Ok(msg) = self.api2.send_message(chat_id.clone(), s).await {
 			let msg_id = msg.message_id;
 			self.msg_storage.add_message((chat_id, msg_id));
