@@ -68,8 +68,8 @@ type AllActions = HashMap<UserId, UserActions>;
 struct BotData<T> {
 	owner_id: Option<UserId>,
 
-	api: telegram_bot::Api,
-	api2: T,
+	api_old: telegram_bot::Api,
+	api_new: T,
 	subscribers: AllActions,
 
 	msg_storage: msg_storage::MessageStorage<(
@@ -82,7 +82,7 @@ impl<T: telegram_api_wrapper::Api> BotData<T> {
 	async fn process_message(&mut self, msg: &str, chat: &telegram_bot::types::User) {
 		let request_type = Request::from(msg);
 		let s = match request_type {
-			Request::Help => SendMessage::new(chat, get_string_help()),
+			Request::Help => (chat, get_string_help()),
 
 			Request::Check | Request::Subscribe => {
 				let act_list = activity::get_activity_list();
@@ -116,16 +116,16 @@ impl<T: telegram_api_wrapper::Api> BotData<T> {
 					"There is no current action".to_owned()
 				};
 
-				SendMessage::new(chat, s)
+				(chat, s)
 			}
 
-			Request::UnknownRequest(_) => SendMessage::new(
+			Request::UnknownRequest(_) => (
 				chat,
 				format!("Unknown command: {}. \n{}", msg, get_string_help()),
 			),
 		};
-
-		self.send_message(s).await
+		let q: telegram_api_wrapper::ChatId = telegram_api_wrapper::ChatId::from(s.0.id);
+		self.send_message_new_api(q, s.1).await
 	}
 
 	async fn process_check_timer(&mut self) {
@@ -177,7 +177,7 @@ impl<T: telegram_api_wrapper::Api> BotData<T> {
 				is_first_iter = false;
 			}
 			let res = self
-				.api2
+				.api_new
 				.delete_message(chat_id.clone(), msg_id.clone())
 				.await;
 			if res.is_ok() {
@@ -187,20 +187,12 @@ impl<T: telegram_api_wrapper::Api> BotData<T> {
 		self.msg_storage.remove_messages(deleted_msg);
 	}
 
-	async fn send_message<'a>(&mut self, msg: SendMessage<'a>) {
-		if let Ok(MessageOrChannelPost::Message(msg)) = self.api.send(msg).await {
-			let chat_id = telegram_api_wrapper::ChatId(i64::from(msg.chat.id()));
-			let msg_id = telegram_api_wrapper::MessageId(i64::from(msg.id));
-			self.msg_storage.add_message((chat_id, msg_id));
-		}
-	}
-
 	async fn send_message_new_api<M: ToString + Send>(
 		&mut self,
 		chat_id: telegram_api_wrapper::ChatId,
 		s: M,
 	) {
-		if let Ok(msg) = self.api2.send_message(chat_id.clone(), s).await {
+		if let Ok(msg) = self.api_new.send_message(chat_id.clone(), s).await {
 			let msg_id = msg.message_id;
 			self.msg_storage.add_message((chat_id, msg_id));
 		}
@@ -247,8 +239,8 @@ fn main() {
 			tokio_old::time::interval(std::time::Duration::from_secs(60 * 60 * 4));
 
 		let mut bot_data = BotData {
-			api,
-			api2,
+			api_old: api,
+			api_new: api2,
 			subscribers,
 			owner_id,
 			msg_storage: msg_storage::MessageStorage::new(),

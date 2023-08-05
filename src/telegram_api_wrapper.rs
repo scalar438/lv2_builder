@@ -18,6 +18,12 @@ impl From<teloxide::prelude::ChatId> for ChatId {
 	}
 }
 
+impl From<telegram_bot::types::UserId> for ChatId {
+	fn from(chat: telegram_bot::types::UserId) -> ChatId {
+		return ChatId(chat.into());
+	}
+}
+
 #[derive(PartialOrd, Ord, PartialEq, Eq, Serialize, Deserialize, Clone)]
 pub struct UserId(pub i64);
 
@@ -32,8 +38,6 @@ pub struct ReseivedMessage {
 
 #[async_trait::async_trait]
 pub trait Api {
-	fn create(token: &str) -> Self;
-
 	async fn send_message<M: ToString + Send>(
 		&mut self,
 		chat_id: ChatId,
@@ -52,8 +56,7 @@ struct ApiWrapper {
 	tokio_runtime: tokio_new::runtime::Runtime,
 }
 
-#[async_trait::async_trait]
-impl Api for ApiWrapper {
+impl ApiWrapper {
 	fn create(token: &str) -> Self {
 		let api = teloxide::Bot::new(token);
 		let runtime = tokio_new::runtime::Builder::new_current_thread()
@@ -65,7 +68,10 @@ impl Api for ApiWrapper {
 			tokio_runtime: runtime,
 		}
 	}
+}
 
+#[async_trait::async_trait]
+impl Api for ApiWrapper {
 	async fn send_message<M: ToString + Send>(
 		&mut self,
 		chat_id: ChatId,
