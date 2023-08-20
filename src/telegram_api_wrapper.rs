@@ -1,7 +1,7 @@
 extern crate async_trait;
 
 use serde::{Deserialize, Serialize};
-use teloxide::prelude::*;
+use teloxide::{prelude::*, update_listeners::AsUpdateStream};
 
 pub enum TelegramError {
 	GeneralError(String),
@@ -53,18 +53,27 @@ pub fn create_api(token: &str) -> impl Api {
 
 struct ApiWrapper {
 	api: teloxide::Bot,
+	stream: teloxide::update_listeners::Polling<teloxide::Bot>,
 	tokio_runtime: tokio_new::runtime::Runtime,
 }
 
 impl ApiWrapper {
 	fn create(token: &str) -> Self {
 		let api = teloxide::Bot::new(token);
+
+		let api_for_stream = api.clone();
+		let updates_stream = teloxide::update_listeners::polling_default(api_for_stream);
+
 		let runtime = tokio_new::runtime::Builder::new_current_thread()
 			.enable_all()
 			.build()
 			.unwrap();
+
+		let stream = runtime.block_on(async { updates_stream.await });
+
 		Self {
 			api,
+			stream,
 			tokio_runtime: runtime,
 		}
 	}
