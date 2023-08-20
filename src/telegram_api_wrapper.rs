@@ -2,6 +2,7 @@ extern crate async_trait;
 
 use serde::{Deserialize, Serialize};
 use teloxide::{prelude::*, update_listeners::AsUpdateStream};
+use tokio_old::stream::StreamExt;
 
 pub enum TelegramError {
 	GeneralError(String),
@@ -27,6 +28,12 @@ impl From<telegram_bot::types::UserId> for ChatId {
 #[derive(PartialOrd, Ord, PartialEq, Eq, Serialize, Deserialize, Clone)]
 pub struct UserId(pub i64);
 
+impl From<&teloxide::types::UserId> for UserId {
+	fn from(user: &teloxide::types::UserId) -> UserId {
+		return UserId(user.0 as i64);
+	}
+}
+
 #[derive(PartialOrd, Ord, PartialEq, Eq, Serialize, Deserialize, Clone)]
 pub struct MessageId(pub i64);
 
@@ -34,6 +41,11 @@ pub struct SentMessage {
 	chat_id: ChatId,
 	user_id: UserId,
 	pub message_id: MessageId,
+}
+
+pub struct BotMessage {
+	user_id: UserId,
+	msg: String,
 }
 
 #[async_trait::async_trait]
@@ -45,6 +57,8 @@ pub trait Api {
 	) -> TlgResult<SentMessage>;
 
 	async fn delete_message(&mut self, chat_id: ChatId, msg_id: MessageId) -> TlgResult<()>;
+
+	async fn get_message(&mut self) -> Option<BotMessage>;
 }
 
 pub fn create_api(token: &str) -> impl Api {
@@ -53,7 +67,7 @@ pub fn create_api(token: &str) -> impl Api {
 
 struct ApiWrapper {
 	api: teloxide::Bot,
-	stream: teloxide::update_listeners::Polling<teloxide::Bot>,
+	pub stream: teloxide::update_listeners::Polling<teloxide::Bot>,
 	tokio_runtime: tokio_new::runtime::Runtime,
 }
 
@@ -77,6 +91,11 @@ impl ApiWrapper {
 			tokio_runtime: runtime,
 		}
 	}
+}
+
+// TODO: trait From doesn't work here
+fn tmp_convert(user: &teloxide::types::User) -> UserId {
+	UserId(user.id.0 as i64)
 }
 
 #[async_trait::async_trait]
@@ -115,5 +134,29 @@ impl Api for ApiWrapper {
 				Err(_) => Err(TelegramError::GeneralError("Error string".to_owned())),
 			}
 		})
+	}
+
+	async fn get_message(&mut self) -> Option<BotMessage> {
+		let stream = self.stream.as_stream().next().await;
+		if let Some(stream) = stream {
+			if let Ok(upd) = stream {
+				let user = upd.user();
+				let msg = match &upd.kind {
+					teloxide::types::UpdateKind::Message(msg) => msg.text().map(|x| x.to_string()),
+
+					_ => None,
+				};
+
+				return match (user, msg) {
+					(Some(user), Some(msg)) => Some(BotMessage {
+						msg,
+						user_id: tmp_convert(user),
+					}),
+					_ => None,
+				};
+			}
+		}
+
+		None
 	}
 }
