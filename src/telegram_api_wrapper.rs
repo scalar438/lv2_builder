@@ -1,7 +1,10 @@
 extern crate async_trait;
 
 use serde::{Deserialize, Serialize};
-use teloxide::{prelude::*, update_listeners::AsUpdateStream};
+use teloxide::{
+	prelude::*,
+	update_listeners::{AsUpdateStream, Polling},
+};
 use tokio_old::stream::StreamExt;
 
 pub enum TelegramError {
@@ -58,9 +61,7 @@ pub trait Api {
 
 	async fn delete_message(&mut self, chat_id: ChatId, msg_id: MessageId) -> TlgResult<()>;
 
-	async fn get_message(&mut self) -> Option<BotMessage>;
-
-	fn get_msg_stream(&self) -> teloxide::update_listeners::Polling<Bot>;
+	fn get_msg_stream(&self) -> StreamWrapper;
 }
 
 pub fn create_api(token: &str) -> impl Api {
@@ -69,7 +70,6 @@ pub fn create_api(token: &str) -> impl Api {
 
 struct ApiWrapper {
 	api: teloxide::Bot,
-	pub stream: teloxide::update_listeners::Polling<teloxide::Bot>,
 	tokio_runtime: tokio_new::runtime::Runtime,
 }
 
@@ -85,14 +85,45 @@ impl ApiWrapper {
 			.build()
 			.unwrap();
 
-		let stream = runtime.block_on(async { updates_stream.await });
-
 		Self {
 			api,
-			stream,
 			tokio_runtime: runtime,
 		}
 	}
+}
+
+pub struct StreamWrapper {
+	stream: Polling<Bot>,
+}
+
+impl futures::Stream for StreamWrapper {
+	type Item = BotMessage;
+
+	fn poll_next(
+		self: std::pin::Pin<&mut Self>,
+		cx: &mut std::task::Context<'_>,
+	) -> std::task::Poll<Option<Self::Item>> {
+		println!("Polling in new stream");
+		std::task::Poll::Pending
+	}
+}
+
+fn get_msg_channel<S: futures::Stream>(s: S) -> tokio_old::sync::mpsc::Receiver<BotMessage> {
+	let (r, w) = tokio_old::sync::mpsc::channel(100);
+
+	/*std::thread::spawn(||{
+		let rt = tokio_new::runtime::Builder::new_current_thread()
+			.enable_all()
+			.build()
+			.unwrap();
+
+		rt.block_on(async{
+			s.n
+		});
+	}
+	);*/
+
+	w
 }
 
 // TODO: trait From doesn't work here
@@ -138,34 +169,10 @@ impl Api for ApiWrapper {
 		})
 	}
 
-	async fn get_message(&mut self) -> Option<BotMessage> {
-		let stream = self.stream.as_stream().next().await;
-		if let Some(stream) = stream {
-			if let Ok(upd) = stream {
-				let user = upd.user();
-				let msg = match &upd.kind {
-					teloxide::types::UpdateKind::Message(msg) => msg.text().map(|x| x.to_string()),
-
-					_ => None,
-				};
-
-				return match (user, msg) {
-					(Some(user), Some(msg)) => Some(BotMessage {
-						msg,
-						user_id: tmp_convert(user),
-					}),
-					_ => None,
-				};
-			}
-		}
-
-		None
-	}
-
-	fn get_msg_stream(&self) -> teloxide::update_listeners::Polling<Bot> {
+	fn get_msg_stream(&self) -> StreamWrapper {
 		let updates_stream = teloxide::update_listeners::polling_default(self.api.clone());
 
 		let stream = self.tokio_runtime.block_on(async { updates_stream.await });
-		stream
+		StreamWrapper { stream }
 	}
 }
