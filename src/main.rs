@@ -247,15 +247,6 @@ fn main() {
 		};
 
 		if let Some(owner_id) = bot_data.owner_id {
-			let user = telegram_bot::chat::User {
-				first_name: "".to_string(),
-				id: owner_id,
-				is_bot: false,
-				language_code: None,
-				last_name: None,
-				username: None,
-			};
-			let chat = telegram_bot::chat::MessageChat::Private(user);
 			let chat_id_new = telegram_api_wrapper::ChatId(i64::from(owner_id.to_user_id()));
 			bot_data
 				.send_message_new_api(chat_id_new, "Bot has started")
