@@ -59,6 +59,8 @@ pub trait Api {
 	async fn delete_message(&mut self, chat_id: ChatId, msg_id: MessageId) -> TlgResult<()>;
 
 	async fn get_message(&mut self) -> Option<BotMessage>;
+
+	fn get_msg_stream(&self) -> teloxide::update_listeners::Polling<Bot>;
 }
 
 pub fn create_api(token: &str) -> impl Api {
@@ -158,5 +160,12 @@ impl Api for ApiWrapper {
 		}
 
 		None
+	}
+
+	fn get_msg_stream(&self) -> teloxide::update_listeners::Polling<Bot> {
+		let updates_stream = teloxide::update_listeners::polling_default(self.api.clone());
+
+		let stream = self.tokio_runtime.block_on(async { updates_stream.await });
+		stream
 	}
 }

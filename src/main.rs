@@ -2,11 +2,12 @@ use activity::ProcessDescription;
 use futures::FutureExt;
 use futures::{pin_mut, select, StreamExt};
 use std::collections::HashMap;
+use telegram_api_wrapper::Api;
 use telegram_bot::types::refs::MessageId;
 use telegram_bot::types::refs::UserId;
 use telegram_bot::types::MessageOrChannelPost;
 use telegram_bot::*;
-
+use teloxide::update_listeners::AsUpdateStream;
 use tokio_old::runtime::Builder;
 
 mod activity;
@@ -229,9 +230,11 @@ fn main() {
 		let (token, owner_id) = read_config();
 
 		let subscribers = HashMap::new();
-		let api = Api::new(token.clone());
+		let api = telegram_bot::Api::new(token.clone());
 		let api2 = telegram_api_wrapper::create_api(&token);
 
+		let mut api2_updates_stream = api2.get_msg_stream();
+		let mut msg_stream_new = api2_updates_stream.as_stream();
 		let mut msg_stream_old = api.stream();
 		let mut check_timer = tokio_old::time::interval(std::time::Duration::from_secs(10));
 		// Clear the chat from old messages every 4 hours
@@ -256,6 +259,9 @@ fn main() {
 			let check_tick = check_timer.tick().fuse();
 			let delete_msg_tick = delete_msg_timer.tick().fuse();
 			let msg = msg_stream_old.next().fuse();
+
+			// This requires a tokio 1.* runtime, so it can't be called here.
+			//let msg = msg_stream_new.next().fuse();
 
 			pin_mut!(check_tick, msg, delete_msg_tick);
 
