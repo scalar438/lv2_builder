@@ -232,7 +232,7 @@ fn main() {
 		let api = Api::new(token.clone());
 		let api2 = telegram_api_wrapper::create_api(&token);
 
-		let mut msg_stream = api.stream();
+		let mut msg_stream_old = api.stream();
 		let mut check_timer = tokio_old::time::interval(std::time::Duration::from_secs(10));
 		// Clear the chat from old messages every 4 hours
 		let mut delete_msg_timer =
@@ -264,7 +264,7 @@ fn main() {
 		loop {
 			let check_tick = check_timer.tick().fuse();
 			let delete_msg_tick = delete_msg_timer.tick().fuse();
-			let msg = msg_stream.next().fuse();
+			let msg = msg_stream_old.next().fuse();
 
 			pin_mut!(check_tick, msg, delete_msg_tick);
 
