@@ -30,7 +30,7 @@ pub struct UserId(pub i64);
 #[derive(PartialOrd, Ord, PartialEq, Eq, Serialize, Deserialize, Clone)]
 pub struct MessageId(pub i64);
 
-pub struct ReseivedMessage {
+pub struct SentMessage {
 	chat_id: ChatId,
 	user_id: UserId,
 	pub message_id: MessageId,
@@ -42,7 +42,7 @@ pub trait Api {
 		&mut self,
 		chat_id: ChatId,
 		msg: M,
-	) -> TlgResult<ReseivedMessage>;
+	) -> TlgResult<SentMessage>;
 
 	async fn delete_message(&mut self, chat_id: ChatId, msg_id: MessageId) -> TlgResult<()>;
 }
@@ -85,14 +85,14 @@ impl Api for ApiWrapper {
 		&mut self,
 		chat_id: ChatId,
 		msg: M,
-	) -> TlgResult<ReseivedMessage> {
+	) -> TlgResult<SentMessage> {
 		let msg_str = msg.to_string();
 		let chat_id = teloxide::types::Recipient::Id(teloxide::prelude::ChatId(chat_id.0));
 		let req = self.api.send_message(chat_id, msg_str);
 		self.tokio_runtime.block_on(async {
 			let res = req.send().await;
 			match res {
-				Ok(msg) => Ok(ReseivedMessage {
+				Ok(msg) => Ok(SentMessage {
 					chat_id: ChatId(msg.chat.id.0),
 					user_id: UserId(msg.chat.id.0),
 					message_id: MessageId(msg.id.0 as i64),
