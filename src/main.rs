@@ -4,14 +4,11 @@ use futures::{pin_mut, select, StreamExt};
 use serde::Serialize;
 use std::collections::HashMap;
 use teloxide::requests::Requester;
-//use telegram_api_wrapper::Api;
-use teloxide::types::{ChatId, MessageId, User, UserId};
+use teloxide::types::{ChatId, MediaKind, MessageId, MessageKind, UpdateKind, User, UserId};
 use teloxide::update_listeners::AsUpdateStream;
-use teloxide::update_listeners::PollingStream;
 
 mod activity;
 mod msg_storage;
-//mod telegram_api_wrapper;
 
 #[derive(PartialEq, Eq)]
 enum Request {
@@ -215,8 +212,9 @@ fn read_config() -> (String, Option<UserId>) {
 }
 
 fn main() {
-	let mut runtime = tokio::runtime::Builder::new_current_thread()
+	let runtime = tokio::runtime::Builder::new_current_thread()
 		.enable_time()
+		.enable_io()
 		.build()
 		.unwrap();
 
@@ -232,7 +230,8 @@ fn main() {
 
 		let mut check_timer = tokio::time::interval(std::time::Duration::from_secs(10));
 		// Clear the chat from old messages every 4 hours
-		let mut delete_msg_timer = tokio::time::interval(std::time::Duration::from_secs(20));
+		let mut delete_msg_timer =
+			tokio::time::interval(std::time::Duration::from_secs(60 * 40 * 4));
 
 		let mut bot_data = BotData {
 			api_new: api2,
@@ -256,24 +255,27 @@ fn main() {
 
 			select! {
 				msg = msg => {
-					println!("Msg is gotten");
-					/*if let Some(Ok(msg)) = msg {
-						println!("Msg got");
-						if let UpdateKind::Message(message) = msg.kind {
-							let chat_id = telegram_api_wrapper::ChatId(i64::from(message.chat.id()));
-							let msg_id = telegram_api_wrapper::MessageId(i64::from(message.id));
+					if let Some(Ok(msg)) = msg {
+						if let UpdateKind::Message(message) = msg.kind
+						{
+							let chat_id = message.chat.id;
+							let msg_id = message.id.0;
 
 							bot_data.msg_storage.add_message((chat_id, msg_id));
-							if let MessageKind::Text { ref data, .. } = message.kind {
-								bot_data.process_message(&data, &message.from).await;
+							if let MessageKind::Common ( msg_common ) = message.kind {
+
+								if let MediaKind::Text(media_text) = msg_common.media_kind{
+									let user = msg_common.from.unwrap();
+									bot_data.process_message(&media_text.text, &user).await
+								}
 							}
 						}
-					}*/
+					}
 				},
 
-				_ = delete_msg_tick => {
+				/*_ = delete_msg_tick => {
 					println!("Del Msg tick");
-					bot_data.delete_old_messages().await;},
+					bot_data.delete_old_messages().await;},*/
 
 				_ = check_tick => {println!("check_tick");
 				bot_data.process_check_timer().await;},
