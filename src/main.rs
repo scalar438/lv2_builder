@@ -1,7 +1,6 @@
 use activity::ProcessDescription;
 use futures::FutureExt;
 use futures::{pin_mut, select, StreamExt};
-use serde::Serialize;
 use std::collections::HashMap;
 use teloxide::requests::Requester;
 use teloxide::types::{ChatId, MediaKind, MessageId, MessageKind, UpdateKind, User, UserId};
@@ -118,7 +117,7 @@ impl BotData {
 			),
 		};
 		let u = s.0.id.0 as u64;
-		self.send_message_new_api(ChatId(u as i64), s.1).await
+		self.send_message(ChatId(u as i64), s.1).await
 	}
 
 	async fn process_check_timer(&mut self) {
@@ -151,9 +150,8 @@ impl BotData {
 			}
 		}
 		for (chat, msg) in msg_list {
-			self.send_message_new_api(ChatId(chat as i64), msg).await;
+			self.send_message(ChatId(chat as i64), msg).await;
 		}
-
 		self.subscribers.retain(|_, actions| actions.len() != 0);
 	}
 
@@ -165,13 +163,13 @@ impl BotData {
 		let mut is_first_iter = true;
 		for (chat_id, msg_id) in old_msg.iter() {
 			if !is_first_iter {
-				tokio::time::sleep(std::time::Duration::from_millis(500)).await;
+				tokio::time::sleep(std::time::Duration::from_millis(1000)).await;
 			} else {
 				is_first_iter = false;
 			}
 			let res = self
 				.api_new
-				.delete_message(chat_id.clone(), MessageId(*msg_id))
+				.delete_message(*chat_id, MessageId(*msg_id))
 				.await;
 			if res.is_ok() {
 				deleted_msg.push((chat_id.clone(), msg_id.clone()));
@@ -180,7 +178,7 @@ impl BotData {
 		self.msg_storage.remove_messages(deleted_msg);
 	}
 
-	async fn send_message_new_api<M: ToString + Send>(&mut self, chat_id: ChatId, s: M) {
+	async fn send_message<M: ToString + Send>(&mut self, chat_id: ChatId, s: M) {
 		if let Ok(msg) = self
 			.api_new
 			.send_message(chat_id.clone(), s.to_string())
@@ -231,7 +229,7 @@ fn main() {
 		let mut check_timer = tokio::time::interval(std::time::Duration::from_secs(10));
 		// Clear the chat from old messages every 4 hours
 		let mut delete_msg_timer =
-			tokio::time::interval(std::time::Duration::from_secs(60 * 40 * 4));
+			tokio::time::interval(std::time::Duration::from_secs(60 * 60 * 4));
 
 		let mut bot_data = BotData {
 			api_new: api2,
@@ -242,9 +240,7 @@ fn main() {
 
 		if let Some(owner_id) = bot_data.owner_id {
 			let chat_id_new = ChatId(owner_id.0 as i64);
-			bot_data
-				.send_message_new_api(chat_id_new, "Bot has started")
-				.await;
+			bot_data.send_message(chat_id_new, "Bot has started").await;
 		}
 		loop {
 			let check_tick = check_timer.tick().fuse();
@@ -273,12 +269,10 @@ fn main() {
 					}
 				},
 
-				/*_ = delete_msg_tick => {
-					println!("Del Msg tick");
-					bot_data.delete_old_messages().await;},*/
+				_ = delete_msg_tick =>
+					bot_data.delete_old_messages().await,
 
-				_ = check_tick => {println!("check_tick");
-				bot_data.process_check_timer().await;},
+				_ = check_tick => bot_data.process_check_timer().await,
 			}
 		}
 	});
