@@ -1,4 +1,4 @@
-use sysinfo::{ProcessExt, ProcessRefreshKind, RefreshKind, System, SystemExt};
+use sysinfo::{ProcessRefreshKind, RefreshKind, System};
 
 #[derive(Debug, Eq, PartialEq, Clone)]
 pub enum ActivityKind {
