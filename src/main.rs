@@ -1,7 +1,7 @@
 use activity::ProcessDescription;
 use futures::FutureExt;
 use futures::{pin_mut, select, StreamExt};
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use teloxide::requests::Requester;
 use teloxide::types::{ChatId, MediaKind, MessageId, MessageKind, UpdateKind, User, UserId};
 use teloxide::update_listeners::AsUpdateStream;
@@ -159,7 +159,8 @@ impl BotData {
 		let old_msg = self
 			.msg_storage
 			.get_old_messages(&std::time::Duration::from_secs(60 * 60 * 24));
-		let mut deleted_msg = Vec::new();
+		let mut deleted_msg = HashSet::new();
+		let mut err_messages = HashSet::new();
 		let mut is_first_iter = true;
 		for (chat_id, msg_id) in old_msg.iter() {
 			if !is_first_iter {
@@ -172,10 +173,24 @@ impl BotData {
 				.delete_message(*chat_id, MessageId(*msg_id))
 				.await;
 			if res.is_ok() {
-				deleted_msg.push((chat_id.clone(), msg_id.clone()));
+				deleted_msg.insert((chat_id.clone(), msg_id.clone()));
+			} else {
+				err_messages.insert((chat_id.clone(), msg_id.clone()));
 			}
 		}
-		self.msg_storage.remove_messages(deleted_msg);
+		if !err_messages.is_empty() {
+			// Get a list of very old messages - older than 30 days
+			let old_msg = self
+				.msg_storage
+				.get_old_messages(&std::time::Duration::from_secs(60 * 60 * 24 * 30));
+			for v in old_msg.iter() {
+				if err_messages.contains(v) {
+					deleted_msg.insert(v.clone());
+				}
+			}
+		}
+		self.msg_storage
+			.remove_messages(deleted_msg.into_iter().collect());
 	}
 
 	async fn send_message<M: ToString + Send>(&mut self, chat_id: ChatId, s: M) {
