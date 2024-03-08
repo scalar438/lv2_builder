@@ -126,12 +126,12 @@ mod test {
 		std::thread::sleep(std::time::Duration::from_secs(1));
 		msg.add_message(3);
 		assert_eq!(
-			msg.get_old_messages_impl(&chrono::Duration::milliseconds(500)),
+			msg.get_old_messages_impl(&chrono::Duration::try_milliseconds(500).unwrap()),
 			[1, 2]
 		);
 		msg.remove_messages(vec![1]);
 		assert_eq!(
-			msg.get_old_messages_impl(&chrono::Duration::milliseconds(500)),
+			msg.get_old_messages_impl(&chrono::Duration::try_milliseconds(500).unwrap()),
 			[2]
 		);
 	}
@@ -144,9 +144,9 @@ mod test {
 
 			let mut new_msg_list = Vec::new();
 			new_msg_list.push((1, cur_dt));
-			new_msg_list.push((2, cur_dt - chrono::Duration::days(1)));
-			new_msg_list.push((3, cur_dt - chrono::Duration::days(2)));
-			new_msg_list.push((4, cur_dt - chrono::Duration::days(3)));
+			new_msg_list.push((2, cur_dt - chrono::Duration::try_days(1).unwrap()));
+			new_msg_list.push((3, cur_dt - chrono::Duration::try_days(2).unwrap()));
+			new_msg_list.push((4, cur_dt - chrono::Duration::try_days(3).unwrap()));
 
 			let mut msg = MessageStorage::new_from_file(&mut storage_file);
 			msg.msg_list = new_msg_list;
@@ -156,10 +156,10 @@ mod test {
 
 		{
 			let msg = MessageStorage::<i32>::new_from_file(&mut storage_file);
-			let msgs = msg.get_old_messages_impl(&chrono::Duration::hours(36));
+			let msgs = msg.get_old_messages_impl(&chrono::Duration::try_hours(36).unwrap());
 			assert_eq!(msgs, [3, 4]);
 
-			let msgs = msg.get_old_messages_impl(&chrono::Duration::hours(12));
+			let msgs = msg.get_old_messages_impl(&chrono::Duration::try_hours(12).unwrap());
 			assert_eq!(msgs, [2, 3, 4]);
 		}
 	}
