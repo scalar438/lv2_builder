@@ -5,6 +5,7 @@ pub enum ActivityKind {
 	Build,
 	Deploy,
 	UpdateToRevision,
+	UpdateModuleManager,
 }
 
 impl std::fmt::Display for ActivityKind {
@@ -13,6 +14,7 @@ impl std::fmt::Display for ActivityKind {
 			ActivityKind::Build => write!(f, "Build"),
 			ActivityKind::Deploy => write!(f, "Deploy"),
 			ActivityKind::UpdateToRevision => write!(f, "Update to revisions"),
+			ActivityKind::UpdateModuleManager => write!(f, "Update with module manager"),
 		}
 	}
 }
@@ -89,6 +91,14 @@ fn get_process_description(proc: &sysinfo::Process) -> Option<ProcessDescription
 			description_text: "".to_owned(),
 		});
 	}
+
+	if name.contains("module-manager") {
+		return Some(ProcessDescriptionData {
+			activity: ActivityKind::UpdateModuleManager,
+			description_text: "".to_owned(),
+		});
+	}
+
 	None
 }
 
