@@ -58,7 +58,7 @@ fn get_string_help() -> String {
 	.to_string()
 }
 
-type UserActions = HashMap<sysinfo::Pid, (activity::ActivityKind, String)>;
+type UserActions = HashMap<sysinfo::Pid, (activity::ActivityKind, Option<String>)>;
 type AllActions = HashMap<UserId, UserActions>;
 
 struct BotData {
@@ -95,7 +95,10 @@ impl BotData {
 							.map(|a| {
 								(
 									*a.pid(),
-									(a.activity_kind().clone(), a.description().to_owned()),
+									(
+										a.activity_kind().clone(),
+										a.description().map(|x| x.to_owned()),
+									),
 								)
 							})
 							.collect();
@@ -138,9 +141,9 @@ impl BotData {
 			for pid in completed_list {
 				if let Some(act) = actions.get(&pid) {
 					let mut msg = format!("{} completed", act.0);
-					if !act.1.is_empty() {
+					if let Some(s) = &act.1 {
 						msg += ", path = `\"";
-						msg += &act.1;
+						msg += &s;
 						msg += "\"`";
 					};
 					let chat_id = chat.0;

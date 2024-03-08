@@ -22,7 +22,7 @@ impl std::fmt::Display for ActivityKind {
 pub trait ProcessDescription {
 	fn pid(&self) -> &sysinfo::Pid;
 	fn activity_kind(&self) -> &ActivityKind;
-	fn description(&self) -> &str;
+	fn description(&self) -> Option<&str>;
 }
 
 pub struct ProcessDescriptionWithPid {
@@ -32,7 +32,7 @@ pub struct ProcessDescriptionWithPid {
 
 struct ProcessDescriptionData {
 	activity: ActivityKind,
-	description_text: String,
+	description_text: Option<String>,
 }
 
 impl ProcessDescription for ProcessDescriptionWithPid {
@@ -42,8 +42,12 @@ impl ProcessDescription for ProcessDescriptionWithPid {
 	fn activity_kind(&self) -> &ActivityKind {
 		&self.description.activity
 	}
-	fn description(&self) -> &str {
-		&self.description.description_text
+	fn description(&self) -> Option<&str> {
+		if let Some(x) = &self.description.description_text {
+			Some(&*x)
+		} else {
+			None
+		}
 	}
 }
 
@@ -54,12 +58,12 @@ fn get_process_description(proc: &sysinfo::Process) -> Option<ProcessDescription
 		let build_path;
 		if let Some(pos) = cmd.iter().position(|r| r == "--build") {
 			if cmd.len() > pos + 1 {
-				build_path = cmd[pos + 1].clone();
+				build_path = Some(cmd[pos + 1].clone());
 			} else {
-				build_path = "".to_owned();
+				build_path = None;
 			}
 		} else {
-			build_path = "".to_owned()
+			build_path = None
 		}
 		return Some(ProcessDescriptionData {
 			activity: ActivityKind::Build,
@@ -75,9 +79,9 @@ fn get_process_description(proc: &sysinfo::Process) -> Option<ProcessDescription
 		let opt_path = arg_item.unwrap();
 		let path;
 		if let Some(x) = opt_path {
-			path = x.to_string();
+			path = Some(x.to_string());
 		} else {
-			path = "".to_owned();
+			path = None;
 		}
 		return Some(ProcessDescriptionData {
 			activity: ActivityKind::UpdateToRevision,
@@ -88,14 +92,29 @@ fn get_process_description(proc: &sysinfo::Process) -> Option<ProcessDescription
 	if name.contains("jinnee-utility") && cmd.contains(&"--deploy_stand".to_owned()) {
 		return Some(ProcessDescriptionData {
 			activity: ActivityKind::Deploy,
-			description_text: "".to_owned(),
+			description_text: None,
 		});
 	}
 
 	if name.contains("module-manager") {
+		// Fint the "store" argument
+		let descr = {
+			if let Some(store_arg) = cmd.iter().enumerate().find(|(_, arg)| {
+				return *arg == "--store";
+			}) {
+				if store_arg.0 + 1 < cmd.len() {
+					Some(cmd[store_arg.0 + 1].clone())
+				} else {
+					None
+				}
+			} else {
+				None
+			}
+		};
+
 		return Some(ProcessDescriptionData {
 			activity: ActivityKind::UpdateModuleManager,
-			description_text: "".to_owned(),
+			description_text: descr,
 		});
 	}
 
