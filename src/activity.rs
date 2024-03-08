@@ -97,7 +97,7 @@ fn get_process_description(proc: &sysinfo::Process) -> Option<ProcessDescription
 	}
 
 	if name.contains("module-manager") {
-		// Fint the "store" argument
+		// Find the "store" argument
 		let descr = {
 			if let Some(store_arg) = cmd.iter().enumerate().find(|(_, arg)| {
 				return *arg == "--store";
