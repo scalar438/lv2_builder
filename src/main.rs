@@ -7,6 +7,7 @@ use teloxide::types::{ChatId, MediaKind, MessageId, MessageKind, UpdateKind, Use
 use teloxide::update_listeners::AsUpdateStream;
 
 mod activity;
+mod config;
 mod msg_storage;
 
 #[derive(PartialEq, Eq)]
@@ -208,25 +209,6 @@ impl BotData {
 	}
 }
 
-// Return token and (optional) owner id
-fn read_config() -> (String, Option<UserId>) {
-	let mut path = std::env::current_exe().unwrap();
-	path.pop();
-	path.push("config.ini");
-
-	let inifile = ini::Ini::load_from_file(path).unwrap();
-	let section = inifile.section::<String>(None).unwrap();
-	let token = section.get("token").unwrap();
-	let owner_id = section
-		.get("owner_id")
-		.and_then(|s| s.parse().ok())
-		.map(UserId);
-
-	println!("{} {:?}", token, owner_id);
-
-	(token.to_owned(), owner_id)
-}
-
 fn main() {
 	let runtime = tokio::runtime::Builder::new_current_thread()
 		.enable_time()
@@ -235,10 +217,10 @@ fn main() {
 		.unwrap();
 
 	runtime.block_on(async {
-		let (token, owner_id) = read_config();
+		let config = config::read_config();
 
 		let subscribers = HashMap::new();
-		let api2 = teloxide::Bot::new(token);
+		let api2 = teloxide::Bot::new(config.token);
 
 		let mut api2_updates_stream =
 			teloxide::update_listeners::polling_default(api2.clone()).await;
@@ -252,7 +234,7 @@ fn main() {
 		let mut bot_data = BotData {
 			api_new: api2,
 			subscribers,
-			owner_id,
+			owner_id: config.owner_id,
 			msg_storage: msg_storage::MessageStorage::new(),
 		};
 
