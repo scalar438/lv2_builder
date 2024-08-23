@@ -13,7 +13,6 @@ mod msg_storage;
 #[derive(PartialEq, Eq)]
 enum Request {
 	Help,
-	Check,
 	Subscribe,
 	UnknownRequest(String),
 }
@@ -39,9 +38,6 @@ impl From<&str> for Request {
 
 		if vs[0] == "help" {
 			return Request::Help;
-		}
-		if vs[0] == "check" {
-			return Request::Check;
 		}
 		if vs[0] == "subscribe" {
 			return Request::Subscribe;
@@ -69,51 +65,52 @@ struct BotData {
 	subscribers: AllActions,
 
 	msg_storage: msg_storage::MessageStorage<(ChatId, i32)>,
+	auto_subscribe: bool,
 }
 
 impl BotData {
+	fn subscribe(&mut self, chat_id: UserId) -> String {
+		let act_list = activity::get_activity_list();
+		let s = if let Some(elem) = act_list.first() {
+			// There is at least one element
+
+			let mut msg = if act_list.len() == 1 {
+				format!("Current action: {}", elem.activity_kind())
+			} else {
+				"There are several running actions".to_owned()
+			};
+			msg += "\n";
+			msg += "When action have been completed you will be notified";
+
+			let h: std::collections::HashMap<_, _> = act_list
+				.into_iter()
+				.map(|a| {
+					(
+						*a.pid(),
+						(
+							a.activity_kind().clone(),
+							a.description().map(|x| x.to_owned()),
+						),
+					)
+				})
+				.collect();
+
+			self.subscribers.insert(chat_id, h);
+
+			msg
+		} else {
+			"There is no current action".to_owned()
+		};
+
+		s
+	}
+
 	async fn process_message(&mut self, msg: &str, chat: &User) {
 		let request_type = Request::from(msg);
 		let s = match request_type {
 			Request::Help => (chat, get_string_help()),
 
-			Request::Check | Request::Subscribe => {
-				let act_list = activity::get_activity_list();
-				let s = if let Some(elem) = act_list.first() {
-					// There is at least one element
-
-					let mut msg = if act_list.len() == 1 {
-						format!("Current action: {}", elem.activity_kind())
-					} else {
-						"There are several running actions".to_owned()
-					};
-					if request_type == Request::Subscribe {
-						msg += "\n";
-						msg += "When action have been completed you will be notified";
-
-						let h: std::collections::HashMap<_, _> = act_list
-							.into_iter()
-							.map(|a| {
-								(
-									*a.pid(),
-									(
-										a.activity_kind().clone(),
-										a.description().map(|x| x.to_owned()),
-									),
-								)
-							})
-							.collect();
-
-						self.subscribers.insert(chat.id, h);
-					}
-
-					msg
-				} else {
-					"There is no current action".to_owned()
-				};
-
-				(chat, s)
-			}
+			Request::Subscribe => (chat, self.subscribe(chat.id)),
 
 			Request::UnknownRequest(_) => (
 				chat,
@@ -129,6 +126,13 @@ impl BotData {
 		let pid_list_new = current_actions.iter().map(|a| a.pid()).collect();
 
 		let mut msg_list = Vec::new();
+
+		if self.auto_subscribe {
+			if let Some(owner) = self.owner_id {
+				// We do not want to use result here
+				self.subscribe(owner);
+			}
+		}
 
 		for (chat, actions) in self.subscribers.iter_mut() {
 			let pid_list_old: std::collections::HashSet<_> = actions.keys().collect();
@@ -236,6 +240,7 @@ fn main() {
 			subscribers,
 			owner_id: config.owner_id,
 			msg_storage: msg_storage::MessageStorage::new(),
+			auto_subscribe: config.auto_subscribe,
 		};
 
 		if let Some(owner_id) = bot_data.owner_id {

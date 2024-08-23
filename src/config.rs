@@ -3,7 +3,7 @@ use teloxide::types::UserId;
 pub struct Config {
 	pub owner_id: Option<UserId>,
 	pub token: String,
-	auto_subscribe: bool,
+	pub auto_subscribe: bool,
 }
 
 pub fn read_config() -> Config {
@@ -24,6 +24,6 @@ pub fn read_config() -> Config {
 	Config {
 		owner_id: owner_id,
 		token: token.to_owned(),
-		auto_subscribe: false,
+		auto_subscribe: true,
 	}
 }
