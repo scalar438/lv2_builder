@@ -69,11 +69,10 @@ struct BotData {
 }
 
 impl BotData {
-	fn subscribe(&mut self, chat_id: UserId) -> String {
+	fn subscribe(&mut self, chat_id: UserId) -> Option<String> {
 		let act_list = activity::get_activity_list();
-		let s = if let Some(elem) = act_list.first() {
+		if let Some(elem) = act_list.first() {
 			// There is at least one element
-
 			let mut msg = if act_list.len() == 1 {
 				format!("Current action: {}", elem.activity_kind())
 			} else {
@@ -97,12 +96,10 @@ impl BotData {
 
 			self.subscribers.insert(chat_id, h);
 
-			msg
+			Some(msg)
 		} else {
-			"There is no current action".to_owned()
-		};
-
-		s
+			None
+		}
 	}
 
 	async fn process_message(&mut self, msg: &str, chat: &User) {
@@ -110,7 +107,13 @@ impl BotData {
 		let s = match request_type {
 			Request::Help => (chat, get_string_help()),
 
-			Request::Subscribe => (chat, self.subscribe(chat.id)),
+			Request::Subscribe => {
+				let s = self
+					.subscribe(chat.id)
+					.or(Some("There is no current action".to_owned()))
+					.unwrap();
+				(chat, s)
+			}
 
 			Request::UnknownRequest(_) => (
 				chat,
@@ -129,8 +132,10 @@ impl BotData {
 
 		if self.auto_subscribe {
 			if let Some(owner) = self.owner_id {
-				// We do not want to use result here
-				self.subscribe(owner);
+				if let Some(msg) = self.subscribe(owner)
+				{
+					self.send_message(ChatId(owner.0 as i64), msg).await;
+				}
 			}
 		}
 
