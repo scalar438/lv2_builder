@@ -49,7 +49,6 @@ impl From<&str> for Request {
 fn get_string_help() -> String {
 	"This is a simple bot for sbis build/deploy progress notification. List of supported commands:
 	/help: prints help message.
-	/check: checks the build/deploy status.
 	/subscribe: sends a notification when the build/deploy process completes.
 	"
 	.to_string()
@@ -125,19 +124,12 @@ impl BotData {
 	}
 
 	async fn process_check_timer(&mut self) {
+		self.process_auto_subscribe_timer().await;
+
 		let current_actions = activity::get_activity_list();
 		let pid_list_new = current_actions.iter().map(|a| a.pid()).collect();
 
 		let mut msg_list = Vec::new();
-
-		if self.auto_subscribe {
-			if let Some(owner) = self.owner_id {
-				if let Some(msg) = self.subscribe(owner)
-				{
-					self.send_message(ChatId(owner.0 as i64), msg).await;
-				}
-			}
-		}
 
 		for (chat, actions) in self.subscribers.iter_mut() {
 			let pid_list_old: std::collections::HashSet<_> = actions.keys().collect();
@@ -166,6 +158,35 @@ impl BotData {
 			self.send_message(ChatId(chat as i64), msg).await;
 		}
 		self.subscribers.retain(|_, actions| actions.len() != 0);
+	}
+
+	async fn process_auto_subscribe_timer(&mut self) {
+		if !self.auto_subscribe {
+			return;
+		}
+
+		if self.owner_id.is_none() {
+			return;
+		}
+
+		let current_subscribers = self
+			.subscribers
+			.get(&self.owner_id.unwrap())
+			.or(Some(&HashMap::new()))
+			.unwrap()
+			.clone();
+
+		for action in activity::get_activity_list() {
+			if !current_subscribers.contains_key(action.pid()) {
+				self.send_message(
+					ChatId(self.owner_id.unwrap().0 as i64),
+					format!("New action: {}", action.activity_kind()),
+				)
+				.await;
+			}
+		}
+
+		self.subscribe(self.owner_id.unwrap());
 	}
 
 	async fn delete_old_messages(&mut self) {
