@@ -1,5 +1,4 @@
 use teloxide::types::UserId;
-
 pub struct Config {
 	pub owner_id: Option<UserId>,
 	pub token: String,
@@ -11,6 +10,10 @@ pub fn read_config() -> Config {
 	path.pop();
 	path.push("config.ini");
 
+	read_config_from_file(path)
+}
+
+fn read_config_from_file(path: std::path::PathBuf) -> Config {
 	let inifile = ini::Ini::load_from_file(path).unwrap();
 	let section = inifile.section::<String>(None).unwrap();
 	let token = section.get("token").unwrap();
@@ -19,11 +22,46 @@ pub fn read_config() -> Config {
 		.and_then(|s| s.parse().ok())
 		.map(UserId);
 
-	println!("{} {:?}", token, owner_id);
+	let auto_subscribe = section
+		.get("auto_subscribe")
+		.and_then(|s| s.parse().ok())
+		.or(Some(true))
+		.unwrap();
+
+	println!(
+		"Token: {}, owner_id: {:?}, auto_subscribe: {}",
+		token, owner_id, auto_subscribe
+	);
 
 	Config {
 		owner_id: owner_id,
 		token: token.to_owned(),
-		auto_subscribe: true,
+		auto_subscribe: auto_subscribe,
+	}
+}
+
+#[cfg(test)]
+mod test {
+	use std::io::Write;
+
+	use super::*;
+
+	#[test]
+	fn test_config() {
+		let mut ini_file = tempfile::NamedTempFile::new().unwrap();
+		ini_file
+			.write(
+				br#"
+token="token"
+owner_id = "42"
+auto_subscribe="false"
+		"#,
+			)
+			.unwrap();
+		ini_file.flush().unwrap();
+		let config = read_config_from_file(ini_file.path().to_path_buf());
+		assert_eq!(config.auto_subscribe, false);
+		assert_eq!(config.token, "token");
+		assert_eq!(config.owner_id.unwrap().0, 42);
 	}
 }
