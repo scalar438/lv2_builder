@@ -172,15 +172,19 @@ impl BotData {
 		let current_subscribers = self
 			.subscribers
 			.get(&self.owner_id.unwrap())
-			.or(Some(&HashMap::new()))
-			.unwrap()
+			.unwrap_or(&HashMap::new())
 			.clone();
 
 		for action in activity::get_activity_list() {
 			if !current_subscribers.contains_key(action.pid()) {
 				self.send_message(
 					ChatId(self.owner_id.unwrap().0 as i64),
-					format!("New action: {}", action.activity_kind()),
+					format!(
+						r#"New action: {}
+Path: {}"#,
+						action.activity_kind(),
+						action.description().unwrap_or("")
+					),
 				)
 				.await;
 			}

@@ -25,8 +25,7 @@ fn read_config_from_file(path: std::path::PathBuf) -> Config {
 	let auto_subscribe = section
 		.get("auto_subscribe")
 		.and_then(|s| s.parse().ok())
-		.or(Some(true))
-		.unwrap();
+		.unwrap_or(true);
 
 	println!(
 		"Token: {}, owner_id: {:?}, auto_subscribe: {}",
