@@ -184,15 +184,10 @@ fn get_deploy_path(cmd: &[String]) -> Option<String> {
 		(None, Some(logs_dir_path)) => logs_dir_path.strip_suffix("logs"),
 
 		(Some(deploy_stand_path), None) => {
-			let mut res = None;
-			if let Some(stripped) = deploy_stand_path.strip_suffix("config\\test.s3deploy") {
-				res = Some(stripped);
-			}
+			let mut res = deploy_stand_path.strip_suffix("config\\test.s3deploy");
 
 			if res.is_none() {
-				if let Some(stripped) = deploy_stand_path.strip_suffix("config/test.s3deploy") {
-					res = Some(stripped)
-				}
+				res = deploy_stand_path.strip_suffix("config/test.s3deploy");
 			}
 
 			res
