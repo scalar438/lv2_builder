@@ -1,6 +1,7 @@
 use teloxide::types::UserId;
+
 pub struct Config {
-	pub owner_id: Option<UserId>,
+	pub owner_id: UserId,
 	pub token: String,
 	pub auto_subscribe: bool,
 }
@@ -20,7 +21,8 @@ fn read_config_from_file(path: std::path::PathBuf) -> Config {
 	let owner_id = section
 		.get("owner_id")
 		.and_then(|s| s.parse().ok())
-		.map(UserId);
+		.map(UserId)
+		.unwrap();
 
 	let auto_subscribe = section
 		.get("auto_subscribe")
@@ -61,6 +63,6 @@ auto_subscribe="false"
 		let config = read_config_from_file(ini_file.path().to_path_buf());
 		assert_eq!(config.auto_subscribe, false);
 		assert_eq!(config.token, "token");
-		assert_eq!(config.owner_id.unwrap().0, 42);
+		assert_eq!(config.owner_id.0, 42);
 	}
 }

@@ -58,7 +58,7 @@ type UserActions = HashMap<sysinfo::Pid, (activity::ActivityKind, Option<String>
 type AllActions = HashMap<UserId, UserActions>;
 
 struct BotData {
-	owner_id: Option<UserId>,
+	owner_id: UserId,
 
 	api_new: teloxide::Bot,
 	subscribers: AllActions,
@@ -165,20 +165,16 @@ impl BotData {
 			return;
 		}
 
-		if self.owner_id.is_none() {
-			return;
-		}
-
 		let current_subscribers = self
 			.subscribers
-			.get(&self.owner_id.unwrap())
+			.get(&self.owner_id)
 			.unwrap_or(&HashMap::new())
 			.clone();
 
 		for action in activity::get_activity_list() {
 			if !current_subscribers.contains_key(action.pid()) {
 				self.send_message(
-					ChatId(self.owner_id.unwrap().0 as i64),
+					ChatId(self.owner_id.0 as i64),
 					format!(
 						r#"New action: {}
 Path: {}"#,
@@ -190,7 +186,7 @@ Path: {}"#,
 			}
 		}
 
-		self.subscribe(self.owner_id.unwrap());
+		self.subscribe(self.owner_id);
 	}
 
 	async fn delete_old_messages(&mut self) {
@@ -217,10 +213,10 @@ Path: {}"#,
 			}
 		}
 		if !err_messages.is_empty() {
-			// Get a list of very old messages - older than 30 days
+			// Get a list of very old messages - older than 10 days
 			let old_msg = self
 				.msg_storage
-				.get_old_messages(&std::time::Duration::from_secs(60 * 60 * 24 * 30));
+				.get_old_messages(&std::time::Duration::from_secs(60 * 60 * 24 * 10));
 			for v in old_msg.iter() {
 				if err_messages.contains(v) {
 					deleted_msg.insert(v.clone());
@@ -273,10 +269,9 @@ fn main() {
 			auto_subscribe: config.auto_subscribe,
 		};
 
-		if let Some(owner_id) = bot_data.owner_id {
-			let chat_id_new = ChatId(owner_id.0 as i64);
-			bot_data.send_message(chat_id_new, "Bot has started").await;
-		}
+		let chat_id_new = ChatId(bot_data.owner_id.0 as i64);
+		bot_data.send_message(chat_id_new, "Bot has started").await;
+
 		loop {
 			let check_tick = check_timer.tick().fuse();
 			let delete_msg_tick = delete_msg_timer.tick().fuse();
