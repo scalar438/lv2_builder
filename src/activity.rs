@@ -62,13 +62,13 @@ fn get_process_description(proc: &sysinfo::Process) -> Option<ProcessDescription
 			} else {
 				build_path = None;
 			}
+			return Some(ProcessDescriptionData {
+				activity: ActivityKind::Build,
+				description_text: build_path,
+			});
 		} else {
-			build_path = None
-		}
-		return Some(ProcessDescriptionData {
-			activity: ActivityKind::Build,
-			description_text: build_path,
-		});
+			return None;
+		};
 	}
 
 	let arg_item = cmd
