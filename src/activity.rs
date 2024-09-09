@@ -121,7 +121,7 @@ fn get_process_description(proc: &sysinfo::Process) -> Option<ProcessDescription
 	None
 }
 
-// The longest common prefix of two string
+// The longest common prefix of two strings
 fn lcp<'a>(a: &'a str, b: &'a str) -> &'a str {
 	for ((i, c1), c2) in a.char_indices().zip(b.chars()) {
 		if c1 != c2 {
@@ -142,7 +142,7 @@ fn pop_char(a: &str) -> &str {
 }
 
 // There is no deploy path in the arguments list. So I need some actions to get it
-// The most precise way to get this is to find the longest common prefix of two strings:
+// The most precise way to get it is to find the longest common prefix of two strings:
 // --deploy_stand C:/Saby/deployed_projects/deploy2\config\test.s3deploy
 // --logs_dir C:/Saby/deployed_projects/deploy2\logs
 // The common prefix is C:/Saby/deployed_projects/deploy2, so it is the deploy path
